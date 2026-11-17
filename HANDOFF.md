@@ -5,38 +5,42 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status**: **Fase 1 (Environment, Konfigurasi & Basis Data SQLite)** telah selesai 100% dan seluruh 16 unit test berhasil lolos (**PASSED**).
-- **Fase Aktif Berikutnya**: **Fase 2 (OCI Multi-Account Service Layer)**.
-- **Git State**: Branch `main`. Environment Python 3.14 + `.venv` aktif dengan seluruh dependensi terinstal.
+- **Status**: **Fase 2 (OCI Multi-Account Service Layer)** telah selesai 100% dan seluruh 30 unit test berhasil lolos (**PASSED**). Mypy static type checking 0 issues.
+- **Fase Aktif Berikutnya**: **Fase 3 (Background Scheduler & Incident Watchdog)**.
+- **Git State**: Branch `feat/phase-2-oci-services` siap di-merge ke `main`.
 
 ---
 
-## 2. File yang Baru Saja Dibuat pada Fase 1
-1. `requirements.txt`: Dependensi OCI SDK, python-telegram-bot, APScheduler, SQLAlchemy (asyncio), aiosqlite, greenlet, Pydantic, pydantic-settings, PyYAML, Matplotlib, pytest, pytest-asyncio.
-2. `.env.example`: Template konfigurasi environment variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_USER_ID`, `DATABASE_URL`, dll.).
-3. `config/settings.py`: Manajemen konfigurasi global asinkron/tervalidasi via `pydantic-settings`.
-4. `config/accounts.yaml.example`: Template deklaratif multi-akun OCI (3 akun: PAYG dan Always Free Tier).
-5. `config/parser.py`: Parser dan validator akun OCI berbasis Pydantic dengan pemeriksaan eksistensi file `.pem`.
-6. `src/database/models.py`: Model ORM SQLAlchemy 2.0 (`Account`, `InstanceState`, `MetricsLog`, `BillingSnapshot`, `AuditLog`, `BotSetting`).
-7. `src/database/connection.py`: Engine SQLite async (`aiosqlite`) dengan PRAGMA WAL mode, session factory, fungsi inisialisasi tabel otomatis (`init_db`), pembaca/penyimpan pengaturan dinamis, dan sinkronisasi metadata akun (`sync_accounts_to_db`).
-8. `pytest.ini`: Konfigurasi pengujian pytest dan asyncio.
-9. `tests/test_config.py` & `tests/test_database.py`: 16 unit test komprehensif menguji parser konfigurasi, validasi schema, operasi database CRUD, foreign key cascade, dan inisialisasi WAL.
+## 2. File yang Baru Saja Dibuat pada Fase 2
+1. `src/oci_services/client_factory.py`:
+   - `OCIClientBundle`: Container client OCI per akun (`ComputeClient`, `VirtualNetworkClient`, `MonitoringClient`, `UsageapiClient`).
+   - `OCIClientFactory`: Manajemen inisialisasi client OCI dengan isolasi kegagalan per akun (*fault isolation*) dan asynchronous handshake verification saat startup.
+2. `src/oci_services/compute.py`:
+   - `ComputeService`: Discovery instance per compartment, resolusi Public & Private IP melalui VNIC attachments (`VirtualNetworkClient`), dan eksekusi kontrol daya (`START`, `STOP`, `SOFTRESET`) dengan `ComputeActionError`. Seluruh pemanggilan synchronous dibungkus `asyncio.to_thread`.
+3. `src/oci_services/monitoring.py`:
+   - `MonitoringService`: Query MQL utilisasi CPU 5–15 menit terakhir dari namespace `oci_computeagent` (`CpuUtilization[1m]{resourceId = "..."}.mean()`) serta historical datapoints untuk chart render.
+4. `src/oci_services/billing.py`:
+   - `BillingService`: Query MTD spend via `UsageapiClient`, algoritma proyeksi pengeluaran linear run-rate akhir bulan (ADR-003), flag pelanggaran budget bulanan, dan *graceful fallback* khusus akun Free Tier / ServiceError ($0.00 tanpa error).
+5. `mypy.ini`: Konfigurasi strict type checking dengan ignore stubs untuk `oci.*`.
+6. `tests/test_oci_services.py`: 14 unit test komprehensif menguji client factory, isolasi error akun, resolusi VNIC IP, kontrol daya, telemetri CPU, formula forecast linear, dan fallback Free Tier.
 
 ---
 
 ## 3. Langkah Persis Selanjutnya (Immediate Next Steps)
-Bagi AI Agent yang melanjutkan pengerjaan ke **Fase 2 (OCI Multi-Account Service Layer)**:
-1. Eksekusi **Sub-task 2.1 (OCI Client Factory)**:
-   - Buat `src/oci_services/client_factory.py` untuk menginisialisasi client OCI SDK (`ComputeClient`, `VirtualNetworkClient`, `MonitoringClient`, `UsageapiClient`) per akun dari konfigurasi in-memory.
-   - Tambahkan fungsi validasi autentikasi / handshake kredensial saat startup.
-2. Eksekusi **Sub-task 2.2 (Compute & IP Resolution Service)**:
-   - Buat `src/oci_services/compute.py`:
-     - `list_instances()`: Ambil daftar instance per compartment.
-     - Resolusi IP: Ambil VNIC attachment dan ekstrak Public IP serta Private IP.
-     - `execute_action()`: Kontrol daya (`START`, `STOP`, `SOFTRESET`).
-3. Eksekusi **Sub-task 2.3 (Monitoring / Telemetry Service)**:
-   - Buat `src/oci_services/monitoring.py`: Query MQL utilisasi CPU 5–15 menit terakhir dari namespace `oci_computeagent`.
-4. Eksekusi **Sub-task 2.4 (Billing & Forecast Service)**:
-   - Buat `src/oci_services/billing.py`: Ambil akumulasi MTD spend via `UsageapiClient`, hitung linear run-rate forecast, dan tangani graceful fallback Free Tier ($0.00 tanpa crash).
-5. Eksekusi **Sub-task 2.5 (Unit Test Fase 2)**:
-   - Buat `tests/test_oci_services.py` menggunakan mock OCI SDK responses.
+Bagi AI Agent yang melanjutkan pengerjaan ke **Fase 3 (Background Scheduler & Incident Watchdog)**:
+1. Buat branch baru untuk Fase 3: `git checkout -b feat/phase-3-scheduler-watchdog` dari `main`.
+2. Eksekusi **Sub-task 3.1 (Dynamic Scheduler Manager)**:
+   - Buat `src/scheduler/manager.py` menggunakan `APScheduler` (`AsyncIOScheduler`).
+   - Implementasikan fungsi reschedule dinamis untuk interval status (5/10/30m) dan billing (3/6/12h).
+3. Eksekusi **Sub-task 3.2 (Polling Tasks & State Diff Engine)**:
+   - Buat `src/scheduler/tasks.py`:
+     - Task periodic status VM & utilisasi CPU.
+     - Task periodic akumulasi billing & snapshot.
+4. Eksekusi **Sub-task 3.3 (Silent Incident Detector)**:
+   - Buat `src/scheduler/detector.py`:
+     - Deteksi transisi status tidak terduga (`RUNNING` -> `STOPPED`).
+     - Deteksi CPU spike (`> 85%` selama 2 siklus berurutan).
+     - Deteksi pelanggaran budget bulanan PAYG.
+     - Deteksi pemulihan status (`RUNNING`).
+5. Eksekusi **Sub-task 3.4 (Unit Test Fase 3)**:
+   - Buat `tests/test_scheduler.py` dan `tests/test_detector.py`.

@@ -19,25 +19,25 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 
 ---
 
-## [ ] FASE 2: OCI Multi-Account Service Layer
-- [ ] **2.1 OCI Client Factory**:
-  - [ ] Buat `src/oci_services/client_factory.py` untuk menginisialisasi client OCI SDK (Compute, VirtualNetwork, Monitoring, UsageAPI) per akun dari dictionary config in-memory.
-  - [ ] Tambahkan verifikasi handshake kredensial saat startup.
-- [ ] **2.2 Compute & IP Resolution Service**:
-  - [ ] Buat `src/oci_services/compute.py`:
+## [x] FASE 2: OCI Multi-Account Service Layer
+- [x] **2.1 OCI Client Factory**:
+  - [x] Buat `src/oci_services/client_factory.py` untuk menginisialisasi client OCI SDK (Compute, VirtualNetwork, Monitoring, UsageAPI) per akun dari dictionary config in-memory.
+  - [x] Tambahkan verifikasi handshake kredensial saat startup.
+- [x] **2.2 Compute & IP Resolution Service**:
+  - [x] Buat `src/oci_services/compute.py`:
     - `list_instances()`: Ambil daftar VM per compartment.
     - Resolusi IP: Ambil VNIC attachment dan ekstrak `public_ip` dan `private_ip` via `VirtualNetworkClient`.
     - `execute_action()`: Eksekusi kontrol daya (`START`, `STOP`, `SOFTRESET`).
-- [ ] **2.3 Monitoring / Telemetry Service**:
-  - [ ] Buat `src/oci_services/monitoring.py`:
+- [x] **2.3 Monitoring / Telemetry Service**:
+  - [x] Buat `src/oci_services/monitoring.py`:
     - Query MQL utilisasi CPU 5–15 menit terakhir dari namespace `oci_computeagent`.
-- [ ] **2.4 Billing & Forecast Service**:
-  - [ ] Buat `src/oci_services/billing.py`:
+- [x] **2.4 Billing & Forecast Service**:
+  - [x] Buat `src/oci_services/billing.py`:
     - Query `RequestSummarizedUsagesDetails` untuk akumulasi biaya bulan berjalan (MTD).
     - Implementasikan kalkulasi linear run-rate forecast hingga akhir bulan.
     - Implementasikan penanganan fallback khusus akun Free Tier / Trial ($0.00 tanpa error).
-- [ ] **2.5 Unit Test Fase 2**:
-  - [ ] Buat `tests/test_oci_services.py` dengan mock data OCI SDK.
+- [x] **2.5 Unit Test Fase 2**:
+  - [x] Buat `tests/test_oci_services.py` dengan mock data OCI SDK.
 
 ---
 

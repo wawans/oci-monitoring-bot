@@ -1,0 +1,51 @@
+# ==============================================================================
+# OCI Multi-Account Configuration Template
+# ==============================================================================
+# Salin file ini ke config/accounts.yaml dan isi dengan kredensial OCI Anda.
+# File config/accounts.yaml sudah diabaikan oleh .gitignore dan TIDAK AKAN di-commit.
+#
+# PENTING:
+# - Letakkan file private key *.pem di folder credentials/keys/
+# - Pastikan permission file key aman: chmod 600 credentials/keys/*.pem
+# - account_type: "PAYG" (Pay-As-You-Go) atau "FREE_TIER" (Always Free / Trial)
+# ==============================================================================
+
+accounts:
+  # Akun 1: Production (Pay As You Go - Singapore)
+  - account_id: "acc_01"
+    name: "Production (Singapore PAYG)"
+    account_type: "PAYG"
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaexample1singaporetenancyocid"
+    user_ocid: "ocid1.user.oc1..aaaaaaaexample1singaporeuserocid"
+    fingerprint: "20:3b:97:13:55:1c:11:0d:43:dc:14:28:b5:12:34:56"
+    key_file: "credentials/keys/acc_01.pem"
+    region: "ap-singapore-1"
+    compartment_id: "ocid1.tenancy.oc1..aaaaaaaexample1singaporetenancyocid"
+    monthly_budget: 75.0
+    is_active: true
+
+  # Akun 2: Development / Personal (Always Free Tier - Tokyo)
+  - account_id: "acc_02"
+    name: "Dev & Lab (Tokyo Free Tier)"
+    account_type: "FREE_TIER"
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaexample2tokyotenancyocid"
+    user_ocid: "ocid1.user.oc1..aaaaaaaexample2tokyouserocid"
+    fingerprint: "11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00"
+    key_file: "credentials/keys/acc_02.pem"
+    region: "ap-tokyo-1"
+    compartment_id: "ocid1.tenancy.oc1..aaaaaaaexample2tokyotenancyocid"
+    monthly_budget: 0.0
+    is_active: true
+
+  # Akun 3: Backup / Staging (Always Free Tier - Ashburn)
+  - account_id: "acc_03"
+    name: "Staging (Ashburn Free Tier)"
+    account_type: "FREE_TIER"
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaexample3ashburntenancyocid"
+    user_ocid: "ocid1.user.oc1..aaaaaaaexample3ashburnuserocid"
+    fingerprint: "aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:77:88:99:00"
+    key_file: "credentials/keys/acc_03.pem"
+    region: "us-ashburn-1"
+    compartment_id: "ocid1.tenancy.oc1..aaaaaaaexample3ashburntenancyocid"
+    monthly_budget: 0.0
+    is_active: true

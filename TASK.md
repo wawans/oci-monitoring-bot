@@ -4,18 +4,18 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 
 ---
 
-## [ ] FASE 1: Environment, Konfigurasi & Basis Data SQLite
-- [ ] **1.1 Dependensi & Konfigurasi Lingkungan**:
-  - [ ] Buat file `requirements.txt` (oci, python-telegram-bot, apscheduler, sqlalchemy, aiosqlite, pydantic, pyyaml, matplotlib, pytest).
-  - [ ] Buat file `.env.example` dan modul `config/settings.py` menggunakan `pydantic-settings`.
-  - [ ] Buat file template `config/accounts.yaml.example` untuk 3–10 akun OCI.
-  - [ ] Buat parser konfigurasi akun di `config/parser.py` dengan validasi path file `.pem`.
-- [ ] **1.2 Skema Database & Migrasi Otomatis**:
-  - [ ] Buat engine koneksi SQLite async di `src/database/connection.py` dengan pengaktifan `WAL mode`.
-  - [ ] Buat model ORM SQLAlchemy di `src/database/models.py` (`Account`, `InstanceState`, `MetricsLog`, `BillingSnapshot`, `AuditLog`, `BotSetting`).
-  - [ ] Buat fungsi inisialisasi tabel otomatis dan sinkronisasi metadata akun dari YAML ke database.
-- [ ] **1.3 Unit Test Fase 1**:
-  - [ ] Buat `tests/test_config.py` dan `tests/test_database.py`.
+## [x] FASE 1: Environment, Konfigurasi & Basis Data SQLite
+- [x] **1.1 Dependensi & Konfigurasi Lingkungan**:
+  - [x] Buat file `requirements.txt` (oci, python-telegram-bot, apscheduler, sqlalchemy, aiosqlite, pydantic, pyyaml, matplotlib, pytest).
+  - [x] Buat file `.env.example` dan modul `config/settings.py` menggunakan `pydantic-settings`.
+  - [x] Buat file template `config/accounts.yaml.example` untuk 3–10 akun OCI.
+  - [x] Buat parser konfigurasi akun di `config/parser.py` dengan validasi path file `.pem`.
+- [x] **1.2 Skema Database & Migrasi Otomatis**:
+  - [x] Buat engine koneksi SQLite async di `src/database/connection.py` dengan pengaktifan `WAL mode`.
+  - [x] Buat model ORM SQLAlchemy di `src/database/models.py` (`Account`, `InstanceState`, `MetricsLog`, `BillingSnapshot`, `AuditLog`, `BotSetting`).
+  - [x] Buat fungsi inisialisasi tabel otomatis dan sinkronisasi metadata akun dari YAML ke database.
+- [x] **1.3 Unit Test Fase 1**:
+  - [x] Buat `tests/test_config.py` dan `tests/test_database.py`.
 
 ---
 

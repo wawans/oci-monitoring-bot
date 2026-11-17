@@ -1,0 +1,25 @@
+# Oracle Cloud Infrastructure SDK
+oci>=2.120.0
+
+# Telegram Bot Framework (Asyncio Native)
+python-telegram-bot>=21.0
+
+# Asynchronous Background Scheduler
+apscheduler>=3.10.4
+
+# Database ORM & Async SQLite Driver
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.20.0
+greenlet>=3.0.0
+
+# Data Modeling & Environment Settings
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+pyyaml>=6.0
+
+# Metric Plotting (Headless PNG Engine)
+matplotlib>=3.8.0
+
+# Testing Suite
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

@@ -5,9 +5,10 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 5 Berhasil 100%)**.
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 5 Berhasil 100% + Centralized User Guide)**.
 - **Hasil Pengujian**: **61/61 Unit Test PASSED** (1.28s) & Mypy Static Type Checking **0 issues** (30 source files).
-- **Git State**: Branch `feat/phase-5-docker-hardening` siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
+- **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
+- **Git State**: Seluruh fase (Fase 1–5) dan dokumentasi `docs/USER_GUIDE.md` telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 
 ---
 

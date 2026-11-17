@@ -84,4 +84,5 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
   - [x] Buat `docker-compose.yml` dengan volume mounting untuk `data/` dan `credentials/`.
 - [x] **5.2 Dokumentasi & Pengujian Akhir**:
   - [x] Lengkapi panduan setup kredensial OCI di `README.md`.
+  - [x] Buat Buku Panduan Pengguna terpusat di `docs/USER_GUIDE.md` (Panduan Kredensial OCI, Bot Telegram, Operasional, Deployment, FAQ).
   - [x] Jalankan end-to-end suite test (`pytest tests/ -v`).

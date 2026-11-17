@@ -38,7 +38,8 @@ oci-monitoring-bot/
 │   ├── scheduler/            # APScheduler manager, polling tasks, & incident detector
 │   └── bot/                  # Telegram middleware, formatters, keyboards, charts, & handlers
 ├── docs/
-│   └── SPEC.md               # Master technical specification & cetak biru arsitektur
+│   ├── SPEC.md               # Master technical specification & cetak biru arsitektur
+│   └── USER_GUIDE.md         # Panduan operasional lengkap & cara mendapatkan kredensial OCI
 ├── tests/                    # 61+ automated unit & integration tests
 ├── AGENTS.md                 # Konstitusi coding & guardrails operasional
 ├── DECISIONS.md              # Architecture Decision Records (ADR-001 s/d ADR-007)
@@ -57,11 +58,13 @@ oci-monitoring-bot/
 
 ## 🚀 Panduan Ringkas Memulai (Quick Start)
 
+> 💡 **Panduan Lengkap & Terperinci**: Untuk panduan langkah demi langkah bergambar mengenai cara mendapatkan kredensial OCI API Key, Token Telegram, panduan interaksi bot, hingga troubleshooting, silakan buka [**Buku Panduan Pengguna (docs/USER_GUIDE.md)**](docs/USER_GUIDE.md).
+
 ### 1. Prasyarat Sistem
 - Python 3.11+
-- Token Telegram Bot dari [@BotFather](https://t.me/BotFather)
+- Token Telegram Bot dari [@BotFather](https://t.me/BotFather) (Lihat [Panduan Telegram](docs/USER_GUIDE.md#bab-2-panduan-setup-bot-telegram))
 - Numeric Telegram User ID Anda dari [@userinfobot](https://t.me/userinfobot)
-- Kredensial API OCI (Tenancy OCID, User OCID, Fingerprint, Region, dan file kunci `.pem`)
+- Kredensial API OCI (Tenancy OCID, User OCID, Fingerprint, Region, dan file kunci `.pem` — Lihat [Panduan Kredensial OCI](docs/USER_GUIDE.md#bab-1-panduan-kredensial-api-oracle-cloud-oci))
 
 ---
 

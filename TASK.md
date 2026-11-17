@@ -60,21 +60,21 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 
 ---
 
-## [ ] FASE 4: Telegram Bot UI, Handlers & Chart Generator
-- [ ] **4.1 Security Middleware & Formatting**:
-  - [ ] Buat `src/bot/middleware.py` untuk validasi `TELEGRAM_ADMIN_USER_ID`.
-  - [ ] Buat `src/bot/formatters.py` untuk template pesan HTML dengan emoji status.
-  - [ ] Buat `src/bot/keyboards.py` untuk Inline Keyboard menu navigasi dan konfirmasi dua langkah.
-- [ ] **4.2 On-Demand Chart Generator**:
-  - [ ] Buat `src/bot/charts.py` untuk merender grafik garis utilisasi CPU menggunakan Matplotlib ke buffer in-memory `BytesIO`.
-- [ ] **4.3 Command Handlers**:
-  - [ ] `/start` dan `/help`: Pengenalan dan panduan penggunaan bot.
-  - [ ] `/status`: Ringkasan instan seluruh akun dan VM.
-  - [ ] `/instances`: Navigasi daftar instance, detail Public IP, dan tombol aksi Start/Stop dengan dialog konfirmasi.
-  - [ ] `/billing`: Rekapitulasi MTD spend, estimasi forecast, dan status budget seluruh akun.
-  - [ ] `/settings`: Menu interaktif ubah interval polling (5/10/30m dan 3/6/12h).
-- [ ] **4.4 Application Runner**:
-  - [ ] Hubungkan router bot, scheduler, dan database di `src/main.py`.
+## [x] FASE 4: Telegram Bot UI, Handlers & Chart Generator
+- [x] **4.1 Security Middleware & Formatting**:
+  - [x] Buat `src/bot/middleware.py` untuk validasi `TELEGRAM_ADMIN_USER_ID`.
+  - [x] Buat `src/bot/formatters.py` untuk template pesan HTML dengan emoji status.
+  - [x] Buat `src/bot/keyboards.py` untuk Inline Keyboard menu navigasi dan konfirmasi dua langkah.
+- [x] **4.2 On-Demand Chart Generator**:
+  - [x] Buat `src/bot/charts.py` untuk merender grafik garis utilisasi CPU menggunakan Matplotlib ke buffer in-memory `BytesIO`.
+- [x] **4.3 Command Handlers**:
+  - [x] `/start` dan `/help`: Pengenalan dan panduan penggunaan bot.
+  - [x] `/status`: Ringkasan instan seluruh akun dan VM.
+  - [x] `/instances`: Navigasi daftar instance, detail Public IP, dan tombol aksi Start/Stop dengan dialog konfirmasi.
+  - [x] `/billing`: Rekapitulasi MTD spend, estimasi forecast, dan status budget seluruh akun.
+  - [x] `/settings`: Menu interaktif ubah interval polling (5/10/30m dan 3/6/12h).
+- [x] **4.4 Application Runner**:
+  - [x] Hubungkan router bot, scheduler, dan database di `src/main.py`.
 
 ---
 

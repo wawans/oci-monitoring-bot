@@ -1,50 +1,55 @@
 # OCI Multi-Account Telegram Monitoring Bot
 
-Aplikasi monitoring multi-akun **Oracle Cloud Infrastructure (OCI)** berbasis Python dan **Telegram Bot**. Dirancang untuk memantau 3 hingga 10 akun OCI (kombinasi akun Pay-As-You-Go dan Always Free/Trial) secara terpusat dengan mekanisme **Silent Incident Watchdog**, kendali daya VM yang aman, visualisasi metrik performa, dan proyeksi tagihan bulanan (*cost forecast*).
+Aplikasi monitoring dan otomasi kontrol terpusat untuk multi-akun **Oracle Cloud Infrastructure (OCI)** berbasis Python 3.11+ dan **Telegram Bot**. Dirancang untuk mengelola **3 hingga 10 akun OCI** (kombinasi akun Pay-As-You-Go dan Always Free/Trial) secara terpusat dengan mekanisme **Silent Incident Watchdog**, kendali daya VM dua langkah yang aman (Two-Step Confirmation), visualisasi metrik performa time-series on-demand, dan proyeksi tagihan bulanan (*cost forecast*).
 
 ---
 
 ## ✨ Fitur Utama
 
-- 🏢 **Multi-Account OCI (3–10 Akun)**: Kelola dan pantau banyak tenancy OCI sekaligus (PAYG, Always Free, Trial) dalam satu antarmuka Telegram.
-- 🌐 **Resolusi IP Publik & Privat**: Menampilkan Public IP dan Private IP dari masing-masing compute instance secara instan.
-- 🔕 **Silent Incident Watchdog**: Polling berkala di latar belakang tanpa membanjiri chat Anda. Push notifikasi darurat **hanya dikirim jika ada insiden** (VM mati mendadak, beban CPU > 85%, budget terlampaui, atau pemulihan status).
-- ⚡ **Kontrol Daya VM Aman**: Start, Stop, dan Reboot compute instance langsung dari Telegram dengan **konfirmasi dua langkah (two-step inline keyboard)** untuk mencegah ketidaksengajaan.
-- 📈 **Visualisasi Metrik & Grafik On-Demand**: Teks terformat rapi dengan emoji indikator status (🟢/🔴), serta tombol `[📈 Lihat Grafik]` untuk membuat chart PNG performa CPU beberapa jam terakhir.
-- 💳 **Billing & Cost Forecast**: Pantau akumulasi biaya bulan berjalan (MTD) dan proyeksi estimasi tagihan akhir bulan berdasarkan *linear run-rate* dengan dukungan graceful fallback untuk akun Free Tier ($0.00).
-- ⏱️ **Pengaturan Interval Dinamis**: Ubah interval polling status VM (5/10/30 menit) dan billing (3/6/12 jam) secara langsung melalui perintah `/settings` tanpa perlu me-restart aplikasi.
-- 🔒 **Aman & Terisolasi**: Whitelist Telegram User ID yang ketat, penyimpanan kunci privat `.pem` lokal terproteksi, dan audit log lengkap di SQLite.
-- 🐳 **Siap Docker**: Dilengkapi `Dockerfile` dan `docker-compose.yml` untuk deployment 24/7 di VPS atau instance Always Free OCI Anda.
+- 🏢 **Multi-Account OCI (3–10 Akun)**: Kelola dan pantau banyak tenancy OCI sekaligus (PAYG, Always Free, Trial) dalam satu antarmuka Telegram terpadu dengan isolasi kegagalan per akun (*fault isolation*).
+- 🌐 **Resolusi IP Publik & Privat**: Mengambil Public IP dan Private IP dari VNIC attachment secara otomatis dan menyimpannya di cache basis data SQLite lokal.
+- 🔕 **Silent Incident Watchdog**: Polling berkala di latar belakang tanpa spam chat. Push notifikasi ke DM Admin **hanya dikirim jika ada insiden** (VM mati mendadak, beban CPU > 85% selama 2 siklus berurutan, budget bulanan terlampaui, atau pemulihan status).
+- ⚡ **Kontrol Daya VM Aman**: Start, Stop, dan Reboot compute instance langsung dari Telegram dengan **konfirmasi dua langkah (two-step confirmation keyboard)** untuk mencegah kesalahan operasional.
+- 📈 **Visualisasi Metrik & Grafik On-Demand**: Render grafik garis time-series PNG utilisasi CPU 6–24 jam terakhir secara on-demand via Matplotlib headless (`Agg`) ke in-memory buffer.
+- 💳 **Billing & Cost Forecast**: Pantau akumulasi biaya bulan berjalan (MTD) dan proyeksi estimasi tagihan akhir bulan berbasis *linear run-rate* dengan *graceful fallback* untuk akun Free Tier / ServiceError ($0.00 tanpa error).
+- ⏱️ **Pengaturan Interval Dinamis**: Ubah interval polling status VM (5/10/30 menit) dan billing (3/6/12 jam) secara langsung melalui `/settings` tanpa perlu me-restart aplikasi (ADR-006).
+- 🔒 **Aman & Terisolasi**: Whitelist Telegram User ID ketat, proteksi kunci privat `.pem` lokal (`chmod 600`), dan pencatatan audit log lengkap di SQLite.
+- 🐳 **Siap Docker**: Dilengkapi `Dockerfile` berbasis Python 3.11 slim (non-root unprivileged user) dan `docker-compose.yml` dengan volume mounting persisten.
 
 ---
 
 ## 📁 Struktur Direktori
 
 ```
-oci-bot/
+oci-monitoring-bot/
 ├── config/                   # Konfigurasi aplikasi & parser YAML
-│   ├── settings.py           # Validasi .env via Pydantic
-│   ├── accounts.yaml.example # Template daftar 3-10 akun OCI
-│   └── accounts.yaml         # File konfigurasi akun aktual (git-ignored)
+│   ├── __init__.py
+│   ├── settings.py           # Validasi .env via Pydantic Settings
+│   ├── accounts.yaml.example # Template deklaratif daftar akun OCI
+│   ├── accounts.yaml         # File konfigurasi akun aktual (git-ignored)
+│   └── parser.py             # Parser & validator schema akun OCI
 ├── credentials/
-│   └── keys/                 # Tempat menyimpan file private key .pem OCI (git-ignored)
+│   └── keys/                 # Tempat menyimpan private key .pem OCI (git-ignored)
 ├── src/
-│   ├── main.py               # Entrypoint aplikasi
-│   ├── database/             # SQLite connection (WAL mode) & model SQLAlchemy
-│   ├── oci_services/         # Abstraksi OCI SDK (Compute, Network/VNIC, Monitoring, Billing)
-│   ├── scheduler/            # APScheduler & Incident Detection Engine
-│   └── bot/                  # Telegram Bot application, handlers, keyboards, formatters
+│   ├── __init__.py
+│   ├── main.py               # Entrypoint & runner aplikasi terpadu
+│   ├── database/             # SQLite async WAL connection & SQLAlchemy ORM models
+│   ├── oci_services/         # Client factory, Compute, Network, Monitoring, & Billing
+│   ├── scheduler/            # APScheduler manager, polling tasks, & incident detector
+│   └── bot/                  # Telegram middleware, formatters, keyboards, charts, & handlers
 ├── docs/
-│   └── SPEC.md               # Spesifikasi teknis & arsitektur permanen
-├── tests/                    # Automated unit & integration tests
-├── AGENTS.md                 # Konstitusi coding & guardrails operasional AI
-├── DECISIONS.md              # Architecture Decision Records (ADR)
-├── TASK.md                   # Checklist progres implementasi per fase
+│   └── SPEC.md               # Master technical specification & cetak biru arsitektur
+├── tests/                    # 61+ automated unit & integration tests
+├── AGENTS.md                 # Konstitusi coding & guardrails operasional
+├── DECISIONS.md              # Architecture Decision Records (ADR-001 s/d ADR-007)
+├── TASK.md                   # Checklist granular roadmap & progres implementasi
 ├── HANDOFF.md                # Catatan estafet pengerjaan antar-sesi
-├── TROUBLESHOOTING.md        # Basis pengetahuan isu teknis & edge-cases
-├── Dockerfile                # Image container Python 3.11
-├── docker-compose.yml        # Konfigurasi orkestrasi container
+├── TROUBLESHOOTING.md        # Basis pengetahuan isu teknis & solusi edge-case
+├── Dockerfile                # Production Docker image (Python 3.11-slim, non-root)
+├── docker-compose.yml        # Orkestrasi Docker Compose dengan volume mounting
 ├── requirements.txt          # Dependensi Python
+├── pytest.ini                # Konfigurasi automated testing
+├── mypy.ini                  # Konfigurasi static type checking
 └── README.md                 # Dokumentasi utama proyek
 ```
 
@@ -52,65 +57,136 @@ oci-bot/
 
 ## 🚀 Panduan Ringkas Memulai (Quick Start)
 
-### 1. Prasyarat
+### 1. Prasyarat Sistem
 - Python 3.11+
-- Token Telegram Bot (didapatkan dari [@BotFather](https://t.me/BotFather))
-- ID Pengguna Telegram Anda (didapatkan dari [@userinfobot](https://t.me/userinfobot))
-- Kredensial API OCI (Tenancy OCID, User OCID, Fingerprint, dan file private key `.pem`)
+- Token Telegram Bot dari [@BotFather](https://t.me/BotFather)
+- Numeric Telegram User ID Anda dari [@userinfobot](https://t.me/userinfobot)
+- Kredensial API OCI (Tenancy OCID, User OCID, Fingerprint, Region, dan file kunci `.pem`)
 
-### 2. Kloning & Persiapan Virtual Environment
+---
+
+### 2. Setup Lingkungan Lokal
+
 ```bash
+# 1. Kloning repositori
 git clone <url-repo-anda>
-cd oci-bot
-python -m venv .venv
+cd oci-monitoring-bot
+
+# 2. Buat dan aktifkan virtual environment
+python3 -m venv .venv
 source .venv/bin/activate  # Di Windows: .venv\Scripts\activate
+
+# 3. Instal dependensi
 pip install -r requirements.txt
-```
-
-### 3. Konfigurasi Environment (`.env`)
-Salin file `.env.example` menjadi `.env` lalu isi token dan ID Telegram Anda:
-```bash
-cp .env.example .env
-```
-Isi `.env`:
-```env
-TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-TELEGRAM_ADMIN_USER_ID=123456789
-POLL_INTERVAL_METRICS_MINUTES=10
-POLL_INTERVAL_BILLING_HOURS=6
-```
-
-### 4. Konfigurasi Akun OCI (`config/accounts.yaml`)
-1. Letakkan file private key OCI Anda di dalam folder: `credentials/keys/` (misal: `acc_01.pem`, `acc_02.pem`).
-2. Buat file `config/accounts.yaml` dari template:
-   ```bash
-   cp config/accounts.yaml.example config/accounts.yaml
-   ```
-3. Sesuaikan Tenancy OCID, User OCID, Fingerprint, Region, dan path file `.pem`.
-
-### 5. Menjalankan Aplikasi
-```bash
-python -m src.main
-```
-Atau menggunakan Docker Compose:
-```bash
-docker-compose up -d
 ```
 
 ---
 
-## 🤖 Perintah Telegram Bot
+### 3. Konfigurasi Kredensial
+
+#### A. File `.env`
+Salin template `.env.example`:
+```bash
+cp .env.example .env
+```
+Sesuaikan nilainya di `.env`:
+```env
+TELEGRAM_BOT_TOKEN="1234567890:ABCDefGhIJKlmNoPQRsTUVwxyZ"
+TELEGRAM_ADMIN_USER_ID=123456789
+DATABASE_URL="sqlite+aiosqlite:///data/oci_bot.db"
+ACCOUNTS_CONFIG_PATH="config/accounts.yaml"
+LOG_LEVEL="INFO"
+DEFAULT_METRICS_INTERVAL_MINUTES=10
+DEFAULT_BILLING_INTERVAL_HOURS=6
+```
+
+#### B. Kunci Privat OCI & `config/accounts.yaml`
+1. Letakkan file `.pem` API Key OCI di dalam `credentials/keys/`:
+   ```bash
+   cp /path/ke/key_anda.pem credentials/keys/acc_01.pem
+   chmod 600 credentials/keys/*.pem
+   ```
+2. Salin template konfigurasi akun:
+   ```bash
+   cp config/accounts.yaml.example config/accounts.yaml
+   ```
+3. Edit `config/accounts.yaml` dengan Tenancy OCID, User OCID, Fingerprint, dan path kunci privat:
+   ```yaml
+   accounts:
+     - account_id: "acc_01"
+       name: "Production (Singapore PAYG)"
+       account_type: "PAYG"
+       tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaexample"
+       user_ocid: "ocid1.user.oc1..aaaaaaaexample"
+       fingerprint: "20:3b:97:13:55:1c:11:0d:43:dc:14:28:b5:12:34:56"
+       key_file: "credentials/keys/acc_01.pem"
+       region: "ap-singapore-1"
+       compartment_id: "ocid1.tenancy.oc1..aaaaaaaexample"
+       monthly_budget: 75.0
+       is_active: true
+   ```
+
+---
+
+### 4. Menjalankan Aplikasi
+
+#### Cara 1: Menjalankan Langsung via Python
+```bash
+source .venv/bin/activate
+python -m src.main
+```
+
+#### Cara 2: Menjalankan via Docker Compose (Rekomendasi Production 24/7)
+```bash
+# Build dan jalankan container di latar belakang
+docker compose up -d
+
+# Periksa log aplikasi
+docker compose logs -f oci-bot
+
+# Menghentikan container
+docker compose down
+```
+
+---
+
+### 5. Menjalankan Pengujian (Unit Tests & Type Checking)
+
+Seluruh komponen telah dilengkapi unit test komprehensif:
+```bash
+source .venv/bin/activate
+
+# Menjalankan 61 unit test
+pytest tests/ -v
+
+# Menjalankan pemeriksaan tipe statis
+mypy config/ src/ tests/
+```
+
+---
+
+## 🤖 Daftar Perintah Telegram Bot
 
 | Perintah | Deskripsi |
 | :--- | :--- |
-| `/start` | Memulai bot dan menampilkan ringkasan informasi |
-| `/help` | Menampilkan panduan penggunaan dan daftar perintah |
-| `/status` | Menampilkan ringkasan status cepat seluruh akun dan VM |
-| `/instances` | Menampilkan daftar instance interaktif (Start/Stop, Public IP, Detail) |
-| `/billing` | Menampilkan rekapitulasi pengeluaran bulan berjalan (MTD) dan forecast |
-| `/settings` | Mengubah interval polling status VM dan billing secara interaktif |
+| `/start` | Memulai interaksi dengan bot dan menampilkan tombol navigasi utama |
+| `/help` | Menampilkan panduan komprehensif dan daftar fitur bot |
+| `/status` | Ikhtisar global status kesehatan seluruh akun dan VM |
+| `/instances` | Navigasi interaktif daftar instance, Public IP, kontrol daya, dan grafik |
+| `/billing` | Rekapitulasi MTD spend aktual, proyeksi run-rate forecast, dan status budget |
+| `/settings` | Menu interaktif untuk mengubah interval polling metrik (5/10/30m) dan billing (3/6/12h) |
+
+---
+
+## 🔔 Aturan Silent Incident Watchdog
+
+Bot tidak akan mengirim spam pesan berkala saat kondisi normal. Push Alert hanya dikirim ke DM Admin jika:
+- 🚨 **VM Mati Mendadak**: Instance yang sebelumnya berstatus `RUNNING` berubah menjadi `STOPPED` atau `CRITICAL`.
+- ⚠️ **CPU Spike**: Utilisasi CPU melampaui `85%` selama 2 siklus pemantauan berurutan.
+- 💸 **Budget Terlampaui**: Proyeksi pengeluaran linear akhir bulan pada akun PAYG melampaui `monthly_budget`.
+- ✅ **Pemulihan**: Instance kembali berstatus `RUNNING` atau CPU kembali normal.
 
 ---
 
 ## 📄 Lisensi
-Didistribusikan di bawah lisensi MIT. Silakan gunakan dan sesuaikan sesuai kebutuhan Anda.
+Didistribusikan di bawah lisensi MIT.

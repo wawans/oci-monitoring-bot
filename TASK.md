@@ -78,10 +78,10 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 
 ---
 
-## [ ] FASE 5: Hardening, Dockerization & Panduan Operasional
-- [ ] **5.1 Dockerization**:
-  - [ ] Buat `Dockerfile` berbasis Python 3.11 slim.
-  - [ ] Buat `docker-compose.yml` dengan volume mounting untuk `data/` dan `credentials/`.
-- [ ] **5.2 Dokumentasi & Pengujian Akhir**:
-  - [ ] Lengkapi panduan setup kredensial OCI di `README.md`.
-  - [ ] Jalankan end-to-end suite test (`pytest tests/ -v`).
+## [x] FASE 5: Hardening, Dockerization & Panduan Operasional
+- [x] **5.1 Dockerization**:
+  - [x] Buat `Dockerfile` berbasis Python 3.11 slim.
+  - [x] Buat `docker-compose.yml` dengan volume mounting untuk `data/` dan `credentials/`.
+- [x] **5.2 Dokumentasi & Pengujian Akhir**:
+  - [x] Lengkapi panduan setup kredensial OCI di `README.md`.
+  - [x] Jalankan end-to-end suite test (`pytest tests/ -v`).

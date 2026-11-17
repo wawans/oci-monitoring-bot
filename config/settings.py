@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     )
 
     # OCI Accounts Configuration
-    accounts_config_path: Path = Field(
+    accounts_config_path: Union[Path, str] = Field(
         default=Path("config/accounts.yaml"),
         alias="ACCOUNTS_CONFIG_PATH",
         description="Path to OCI accounts YAML configuration file",
@@ -62,9 +62,9 @@ class Settings(BaseSettings):
         description="Default interval for billing and forecast polling in hours",
     )
 
-    @field_validator("accounts_config_path", mode="before")
+    @field_validator("accounts_config_path", mode="after")
     @classmethod
-    def parse_path(cls, v: object) -> Path:
+    def parse_path(cls, v: Union[Path, str]) -> Path:
         """Convert string path to pathlib.Path object."""
         if isinstance(v, Path):
             return v

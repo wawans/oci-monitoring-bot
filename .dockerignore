@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Python caches and virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv
+env
+*.egg-info
+dist
+build
+
+# Testing & Coverage
+.pytest_cache
+.coverage
+htmlcov
+tests/
+
+# Sensitive data and local databases
+.env
+config/accounts.yaml
+credentials/keys/*
+!credentials/keys/.gitkeep
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# IDE & OS
+.vscode
+.idea
+.DS_Store

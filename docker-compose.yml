@@ -1,0 +1,28 @@
+# ==============================================================================
+# OCI Multi-Account Telegram Monitoring Bot - Docker Compose
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  oci-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oci-monitoring-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persistent SQLite WAL database storage
+      - ./data:/app/data
+      # OCI multi-account credentials (read-only for security)
+      - ./config/accounts.yaml:/app/config/accounts.yaml:ro
+      - ./credentials/keys:/app/credentials/keys:ro
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

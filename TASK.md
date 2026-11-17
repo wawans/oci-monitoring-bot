@@ -41,22 +41,22 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 
 ---
 
-## [ ] FASE 3: Background Scheduler & Incident Watchdog
-- [ ] **3.1 Dynamic Scheduler Manager**:
-  - [ ] Buat `src/scheduler/manager.py` menggunakan `APScheduler` (`AsyncIOScheduler`).
-  - [ ] Implementasikan fungsi reschedule dinamis untuk interval status (5/10/30m) dan billing (3/6/12h).
-- [ ] **3.2 Polling Tasks & State Diff Engine**:
-  - [ ] Buat `src/scheduler/tasks.py`:
+## [x] FASE 3: Background Scheduler & Incident Watchdog
+- [x] **3.1 Dynamic Scheduler Manager**:
+  - [x] Buat `src/scheduler/manager.py` menggunakan `APScheduler` (`AsyncIOScheduler`).
+  - [x] Implementasikan fungsi reschedule dinamis untuk interval status (5/10/30m) dan billing (3/6/12h).
+- [x] **3.2 Polling Tasks & State Diff Engine**:
+  - [x] Buat `src/scheduler/tasks.py`:
     - Task periodic status VM & utilisasi CPU.
     - Task periodic akumulasi billing & snapshot.
-- [ ] **3.3 Silent Incident Detector**:
-  - [ ] Buat `src/scheduler/detector.py`:
+- [x] **3.3 Silent Incident Detector**:
+  - [x] Buat `src/scheduler/detector.py`:
     - Deteksi transisi status tidak terduga (`RUNNING` -> `STOPPED`).
     - Deteksi CPU spike (`> 85%` selama 2 siklus berurutan).
     - Deteksi pelanggaran budget bulanan PAYG.
     - Deteksi pemulihan status (`RUNNING`).
-- [ ] **3.4 Unit Test Fase 3**:
-  - [ ] Buat `tests/test_scheduler.py` dan `tests/test_detector.py`.
+- [x] **3.4 Unit Test Fase 3**:
+  - [x] Buat `tests/test_scheduler.py` dan `tests/test_detector.py`.
 
 ---
 

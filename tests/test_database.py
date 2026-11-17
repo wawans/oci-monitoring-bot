@@ -1,9 +1,16 @@
 """Unit tests for SQLite database layer, SQLAlchemy ORM models, and account synchronization."""
 
+from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Tuple
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from config.parser import AccountConfig, AccountType
 from src.database.connection import (
@@ -25,9 +32,11 @@ from src.database.models import (
     MetricsLog,
 )
 
+DBFixture = Tuple[async_sessionmaker[AsyncSession], AsyncEngine]
+
 
 @pytest.fixture
-async def async_db(tmp_path: Path):
+async def async_db(tmp_path: Path) -> AsyncGenerator[DBFixture, None]:
     """Fixture providing a temporary SQLite database engine and session factory."""
     db_file = tmp_path / "test_oci.db"
     db_url = f"sqlite+aiosqlite:///{db_file}"
@@ -53,7 +62,7 @@ async def async_db(tmp_path: Path):
 class TestDatabaseModels:
     """Test ORM models and CRUD operations."""
 
-    async def test_account_creation(self, async_db) -> None:
+    async def test_account_creation(self, async_db: DBFixture) -> None:
         """Test creating and querying an Account record."""
         session_factory, _ = async_db
 
@@ -82,7 +91,7 @@ class TestDatabaseModels:
             assert fetched.monthly_budget == 100.0
             assert fetched.is_active is True
 
-    async def test_instance_state_and_metrics(self, async_db) -> None:
+    async def test_instance_state_and_metrics(self, async_db: DBFixture) -> None:
         """Test creating an InstanceState and logging telemetry metrics."""
         session_factory, _ = async_db
 
@@ -148,7 +157,7 @@ class TestDatabaseModels:
             all_metrics = metrics_result.scalars().all()
             assert len(all_metrics) == 2
 
-    async def test_billing_and_audit_log(self, async_db) -> None:
+    async def test_billing_and_audit_log(self, async_db: DBFixture) -> None:
         """Test billing snapshot recording and power action audit logging."""
         session_factory, _ = async_db
 
@@ -204,7 +213,7 @@ class TestDatabaseModels:
 class TestBotSettings:
     """Test dynamic runtime bot settings get/set utilities."""
 
-    async def test_bot_settings_operations(self, async_db) -> None:
+    async def test_bot_settings_operations(self, async_db: DBFixture) -> None:
         """Test getting, setting, and updating dynamic bot settings."""
         session_factory, _ = async_db
 
@@ -233,7 +242,7 @@ class TestBotSettings:
 class TestSyncAccounts:
     """Test synchronization from AccountConfig YAML objects into database."""
 
-    async def test_sync_accounts_to_db(self, async_db) -> None:
+    async def test_sync_accounts_to_db(self, async_db: DBFixture) -> None:
         """Verify upserting accounts creates and subsequently updates accounts."""
         session_factory, _ = async_db
 

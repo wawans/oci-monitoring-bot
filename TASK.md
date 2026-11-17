@@ -1,0 +1,87 @@
+# TASK.md - Implementation Roadmap & Progress Tracker
+
+Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot**. Setiap task memiliki status `[ ]` (belum selesai) atau `[x]` (selesai).
+
+---
+
+## [ ] FASE 1: Environment, Konfigurasi & Basis Data SQLite
+- [ ] **1.1 Dependensi & Konfigurasi Lingkungan**:
+  - [ ] Buat file `requirements.txt` (oci, python-telegram-bot, apscheduler, sqlalchemy, aiosqlite, pydantic, pyyaml, matplotlib, pytest).
+  - [ ] Buat file `.env.example` dan modul `config/settings.py` menggunakan `pydantic-settings`.
+  - [ ] Buat file template `config/accounts.yaml.example` untuk 3–10 akun OCI.
+  - [ ] Buat parser konfigurasi akun di `config/parser.py` dengan validasi path file `.pem`.
+- [ ] **1.2 Skema Database & Migrasi Otomatis**:
+  - [ ] Buat engine koneksi SQLite async di `src/database/connection.py` dengan pengaktifan `WAL mode`.
+  - [ ] Buat model ORM SQLAlchemy di `src/database/models.py` (`Account`, `InstanceState`, `MetricsLog`, `BillingSnapshot`, `AuditLog`, `BotSetting`).
+  - [ ] Buat fungsi inisialisasi tabel otomatis dan sinkronisasi metadata akun dari YAML ke database.
+- [ ] **1.3 Unit Test Fase 1**:
+  - [ ] Buat `tests/test_config.py` dan `tests/test_database.py`.
+
+---
+
+## [ ] FASE 2: OCI Multi-Account Service Layer
+- [ ] **2.1 OCI Client Factory**:
+  - [ ] Buat `src/oci_services/client_factory.py` untuk menginisialisasi client OCI SDK (Compute, VirtualNetwork, Monitoring, UsageAPI) per akun dari dictionary config in-memory.
+  - [ ] Tambahkan verifikasi handshake kredensial saat startup.
+- [ ] **2.2 Compute & IP Resolution Service**:
+  - [ ] Buat `src/oci_services/compute.py`:
+    - `list_instances()`: Ambil daftar VM per compartment.
+    - Resolusi IP: Ambil VNIC attachment dan ekstrak `public_ip` dan `private_ip` via `VirtualNetworkClient`.
+    - `execute_action()`: Eksekusi kontrol daya (`START`, `STOP`, `SOFTRESET`).
+- [ ] **2.3 Monitoring / Telemetry Service**:
+  - [ ] Buat `src/oci_services/monitoring.py`:
+    - Query MQL utilisasi CPU 5–15 menit terakhir dari namespace `oci_computeagent`.
+- [ ] **2.4 Billing & Forecast Service**:
+  - [ ] Buat `src/oci_services/billing.py`:
+    - Query `RequestSummarizedUsagesDetails` untuk akumulasi biaya bulan berjalan (MTD).
+    - Implementasikan kalkulasi linear run-rate forecast hingga akhir bulan.
+    - Implementasikan penanganan fallback khusus akun Free Tier / Trial ($0.00 tanpa error).
+- [ ] **2.5 Unit Test Fase 2**:
+  - [ ] Buat `tests/test_oci_services.py` dengan mock data OCI SDK.
+
+---
+
+## [ ] FASE 3: Background Scheduler & Incident Watchdog
+- [ ] **3.1 Dynamic Scheduler Manager**:
+  - [ ] Buat `src/scheduler/manager.py` menggunakan `APScheduler` (`AsyncIOScheduler`).
+  - [ ] Implementasikan fungsi reschedule dinamis untuk interval status (5/10/30m) dan billing (3/6/12h).
+- [ ] **3.2 Polling Tasks & State Diff Engine**:
+  - [ ] Buat `src/scheduler/tasks.py`:
+    - Task periodic status VM & utilisasi CPU.
+    - Task periodic akumulasi billing & snapshot.
+- [ ] **3.3 Silent Incident Detector**:
+  - [ ] Buat `src/scheduler/detector.py`:
+    - Deteksi transisi status tidak terduga (`RUNNING` -> `STOPPED`).
+    - Deteksi CPU spike (`> 85%` selama 2 siklus berurutan).
+    - Deteksi pelanggaran budget bulanan PAYG.
+    - Deteksi pemulihan status (`RUNNING`).
+- [ ] **3.4 Unit Test Fase 3**:
+  - [ ] Buat `tests/test_scheduler.py` dan `tests/test_detector.py`.
+
+---
+
+## [ ] FASE 4: Telegram Bot UI, Handlers & Chart Generator
+- [ ] **4.1 Security Middleware & Formatting**:
+  - [ ] Buat `src/bot/middleware.py` untuk validasi `TELEGRAM_ADMIN_USER_ID`.
+  - [ ] Buat `src/bot/formatters.py` untuk template pesan HTML dengan emoji status.
+  - [ ] Buat `src/bot/keyboards.py` untuk Inline Keyboard menu navigasi dan konfirmasi dua langkah.
+- [ ] **4.2 On-Demand Chart Generator**:
+  - [ ] Buat `src/bot/charts.py` untuk merender grafik garis utilisasi CPU menggunakan Matplotlib ke buffer in-memory `BytesIO`.
+- [ ] **4.3 Command Handlers**:
+  - [ ] `/start` dan `/help`: Pengenalan dan panduan penggunaan bot.
+  - [ ] `/status`: Ringkasan instan seluruh akun dan VM.
+  - [ ] `/instances`: Navigasi daftar instance, detail Public IP, dan tombol aksi Start/Stop dengan dialog konfirmasi.
+  - [ ] `/billing`: Rekapitulasi MTD spend, estimasi forecast, dan status budget seluruh akun.
+  - [ ] `/settings`: Menu interaktif ubah interval polling (5/10/30m dan 3/6/12h).
+- [ ] **4.4 Application Runner**:
+  - [ ] Hubungkan router bot, scheduler, dan database di `src/main.py`.
+
+---
+
+## [ ] FASE 5: Hardening, Dockerization & Panduan Operasional
+- [ ] **5.1 Dockerization**:
+  - [ ] Buat `Dockerfile` berbasis Python 3.11 slim.
+  - [ ] Buat `docker-compose.yml` dengan volume mounting untuk `data/` dan `credentials/`.
+- [ ] **5.2 Dokumentasi & Pengujian Akhir**:
+  - [ ] Lengkapi panduan setup kredensial OCI di `README.md`.
+  - [ ] Jalankan end-to-end suite test (`pytest tests/ -v`).

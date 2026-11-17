@@ -5,42 +5,43 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status**: **Fase 2 (OCI Multi-Account Service Layer)** telah selesai 100% dan seluruh 30 unit test berhasil lolos (**PASSED**). Mypy static type checking 0 issues.
-- **Fase Aktif Berikutnya**: **Fase 3 (Background Scheduler & Incident Watchdog)**.
-- **Git State**: Branch `feat/phase-2-oci-services` siap di-merge ke `main`.
+- **Status**: **Fase 3 (Background Scheduler & Incident Watchdog)** telah selesai 100% dan seluruh 45 unit test berhasil lolos (**PASSED**). Mypy static type checking 0 issues (21 source files).
+- **Fase Aktif Berikutnya**: **Fase 4 (Telegram Bot UI, Handlers & Chart Generator)**.
+- **Git State**: Branch `feat/phase-3-scheduler-watchdog` siap di-merge ke `main`.
 
 ---
 
-## 2. File yang Baru Saja Dibuat pada Fase 2
-1. `src/oci_services/client_factory.py`:
-   - `OCIClientBundle`: Container client OCI per akun (`ComputeClient`, `VirtualNetworkClient`, `MonitoringClient`, `UsageapiClient`).
-   - `OCIClientFactory`: Manajemen inisialisasi client OCI dengan isolasi kegagalan per akun (*fault isolation*) dan asynchronous handshake verification saat startup.
-2. `src/oci_services/compute.py`:
-   - `ComputeService`: Discovery instance per compartment, resolusi Public & Private IP melalui VNIC attachments (`VirtualNetworkClient`), dan eksekusi kontrol daya (`START`, `STOP`, `SOFTRESET`) dengan `ComputeActionError`. Seluruh pemanggilan synchronous dibungkus `asyncio.to_thread`.
-3. `src/oci_services/monitoring.py`:
-   - `MonitoringService`: Query MQL utilisasi CPU 5–15 menit terakhir dari namespace `oci_computeagent` (`CpuUtilization[1m]{resourceId = "..."}.mean()`) serta historical datapoints untuk chart render.
-4. `src/oci_services/billing.py`:
-   - `BillingService`: Query MTD spend via `UsageapiClient`, algoritma proyeksi pengeluaran linear run-rate akhir bulan (ADR-003), flag pelanggaran budget bulanan, dan *graceful fallback* khusus akun Free Tier / ServiceError ($0.00 tanpa error).
-5. `mypy.ini`: Konfigurasi strict type checking dengan ignore stubs untuk `oci.*`.
-6. `tests/test_oci_services.py`: 14 unit test komprehensif menguji client factory, isolasi error akun, resolusi VNIC IP, kontrol daya, telemetri CPU, formula forecast linear, dan fallback Free Tier.
+## 2. File yang Baru Saja Dibuat pada Fase 3
+1. `src/scheduler/detector.py`:
+   - `IncidentType` (`VM_DOWN`, `VM_RECOVERED`, `HIGH_CPU_SPIKE`, `HIGH_CPU_RESOLVED`, `BUDGET_EXCEEDED`).
+   - `IncidentSeverity` (`CRITICAL`, `WARNING`, `INFO`).
+   - `IncidentAlert`: Data payload alert insiden.
+   - `IncidentDetector`: Evaluasi transisi lifecycle tak terduga, deteksi lonjakan CPU `> 85%` selama 2 siklus berurutan, deteksi recovery, dan deteksi pelanggaran budget bulanan PAYG.
+2. `src/scheduler/tasks.py`:
+   - `poll_metrics_task`: Polling status compute VM & utilisasi CPU periodik ke seluruh akun OCI dengan *fault isolation per account*, update cache tabel `INSTANCE_STATE`, histori telemetri `METRICS_LOG`, dan dispatch alert hanya jika terjadi insiden.
+   - `poll_billing_task`: Polling periodik pengeluaran MTD & kalkulasi forecast ke seluruh akun, penyimpanan histori `BILLING_SNAPSHOT`, dan dispatch alert jika budget terlampaui.
+3. `src/scheduler/manager.py`:
+   - `SchedulerManager`: Orkestrasi `APScheduler` (`AsyncIOScheduler`) dengan dukungan *runtime rescheduling* (ADR-006) untuk interval status (5/10/30 menit) dan billing (3/6/12 jam) tanpa restart aplikasi.
+4. `src/scheduler/__init__.py`: Package init mengekspos public interface layer scheduler & detector.
+5. `mypy.ini`: Konfigurasi strict type checking dengan ignore stubs untuk `apscheduler.*`.
+6. `tests/test_detector.py` & `tests/test_scheduler.py`: 15 unit test baru menguji seluruh skenario detector insiden, lifecycle scheduler, dynamic rescheduling, dan polling tasks. Total test suite mencapai **45/45 PASSED**.
 
 ---
 
 ## 3. Langkah Persis Selanjutnya (Immediate Next Steps)
-Bagi AI Agent yang melanjutkan pengerjaan ke **Fase 3 (Background Scheduler & Incident Watchdog)**:
-1. Buat branch baru untuk Fase 3: `git checkout -b feat/phase-3-scheduler-watchdog` dari `main`.
-2. Eksekusi **Sub-task 3.1 (Dynamic Scheduler Manager)**:
-   - Buat `src/scheduler/manager.py` menggunakan `APScheduler` (`AsyncIOScheduler`).
-   - Implementasikan fungsi reschedule dinamis untuk interval status (5/10/30m) dan billing (3/6/12h).
-3. Eksekusi **Sub-task 3.2 (Polling Tasks & State Diff Engine)**:
-   - Buat `src/scheduler/tasks.py`:
-     - Task periodic status VM & utilisasi CPU.
-     - Task periodic akumulasi billing & snapshot.
-4. Eksekusi **Sub-task 3.3 (Silent Incident Detector)**:
-   - Buat `src/scheduler/detector.py`:
-     - Deteksi transisi status tidak terduga (`RUNNING` -> `STOPPED`).
-     - Deteksi CPU spike (`> 85%` selama 2 siklus berurutan).
-     - Deteksi pelanggaran budget bulanan PAYG.
-     - Deteksi pemulihan status (`RUNNING`).
-5. Eksekusi **Sub-task 3.4 (Unit Test Fase 3)**:
-   - Buat `tests/test_scheduler.py` dan `tests/test_detector.py`.
+Bagi AI Agent yang melanjutkan pengerjaan ke **Fase 4 (Telegram Bot UI, Handlers & Chart Generator)**:
+1. Merge branch `feat/phase-3-scheduler-watchdog` ke `main`.
+2. Buat branch baru untuk Fase 4: `git checkout -b feat/phase-4-telegram-bot` dari `main`.
+3. Eksekusi **Sub-task 4.1 (Security Middleware, Formatting & Keyboards)**:
+   - Buat `src/bot/middleware.py` untuk validasi whitelist `TELEGRAM_ADMIN_USER_ID`.
+   - Buat `src/bot/formatters.py` untuk template pesan HTML dengan emoji status.
+   - Buat `src/bot/keyboards.py` untuk Inline Keyboard menu navigasi, list VM, interval settings, dan konfirmasi dua langkah (`[✅ Ya, Lanjutkan]` / `[❌ Batalkan]`) (ADR-007).
+4. Eksekusi **Sub-task 4.2 (On-Demand Chart Generator)**:
+   - Buat `src/bot/charts.py` untuk render grafik garis PNG utilisasi CPU 6–24 jam via Matplotlib headless (`Agg`) ke in-memory `BytesIO`.
+5. Eksekusi **Sub-task 4.3 (Command & Callback Handlers)**:
+   - Buat handlers untuk `/start`, `/help`, `/status`, `/instances`, `/billing`, `/settings`, dan callback query tombol interaktif.
+   - Audit logging setiap kontrol daya ke `AUDIT_LOG`.
+6. Eksekusi **Sub-task 4.4 (Application Runner)**:
+   - Buat `src/main.py` menghubungkan router bot, background scheduler, client factory, dan database.
+7. Eksekusi **Sub-task 4.5 (Unit Test Fase 4)**:
+   - Buat `tests/test_bot.py` dan `tests/test_charts.py`.

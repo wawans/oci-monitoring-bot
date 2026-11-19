@@ -16,8 +16,11 @@ logger = logging.getLogger(__name__)
 class MonitoringService:
     """Service handling metrics polling and CPU telemetry retrieval via OCI Monitoring API."""
 
-    @staticmethod
+    COMPUTE_AGENT_NAMESPACE: str = "oci_computeagent"
+
+    @classmethod
     def _sync_get_cpu_metric(
+        cls,
         bundle: OCIClientBundle,
         instance_id: str,
         window_minutes: int = 15,
@@ -28,6 +31,7 @@ class MonitoringService:
 
         query = f'CpuUtilization[1m]{{resourceId = "{instance_id}"}}.mean()'
         details = SummarizeMetricsDataDetails(
+            namespace=cls.COMPUTE_AGENT_NAMESPACE,
             query=query,
             start_time=start_time,
             end_time=now,
@@ -80,8 +84,9 @@ class MonitoringService:
             self._sync_get_cpu_metric, bundle, instance_id, window_minutes
         )
 
-    @staticmethod
+    @classmethod
     def _sync_get_cpu_history(
+        cls,
         bundle: OCIClientBundle,
         instance_id: str,
         hours: int = 24,
@@ -92,6 +97,7 @@ class MonitoringService:
 
         query = f'CpuUtilization[5m]{{resourceId = "{instance_id}"}}.mean()'
         details = SummarizeMetricsDataDetails(
+            namespace=cls.COMPUTE_AGENT_NAMESPACE,
             query=query,
             start_time=start_time,
             end_time=now,

@@ -67,7 +67,9 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 3. Panduan Pemeliharaan & Pengembangan Selanjutnya
-Jika di masa mendatang ingin menambahkan fitur baru:
-1. Buat feature branch baru dari `main`.
-2. Pastikan setiap penambahan kode baru mematuhi konvensi di `AGENTS.md` (type hints lengkap, async first, pathlib.Path, structured logging, 0 print).
-3. Jalankan automated test suite `pytest tests/ -v` dan `mypy config/ src/ tests/` sebelum melakukan merge ke `main`.
+Jika di masa mendatang ingin menambahkan fitur baru atau perbaikan:
+1. **Prinsip Anti-Bloat**: DILARANG menumpuk pekerjaan baru ke dalam fase yang sudah selesai. Setiap pekerjaan baru WAJIB dibuatkan fase/milestone baru berurutan (misal: Fase 9, dst.) secara modular dan terisolasi di `TASK.md` dan `HANDOFF.md`.
+2. **Git Branching Per-Task**: Buat feature branch baru dari `main` untuk tiap fase/task yang dikerjakan.
+3. **Kepatuhan Guardrails**: Pastikan setiap penambahan kode baru mematuhi seluruh aturan di `AGENTS.md` (type hints lengkap, async first, pathlib.Path, structured logging, 0 print, isolasi error OCI).
+4. **Verifikasi Kualitas**: Jalankan automated test suite `pytest tests/ -v` dan `mypy config/ src/ tests/` (wajib 100% PASSED & 0 error) sebelum melakukan merge `--no-ff` ke `main`.
+5. **Git Push Remote**: Lakukan push ke remote repository HANYA setelah mendapatkan instruksi eksplisit dari pengguna.

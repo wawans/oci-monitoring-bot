@@ -41,12 +41,15 @@ Dokumen ini adalah **pedoman operasional baku (Konstitusi Proyek)** bagi AI Agen
 
 ## 4. Alur Kerja Agentic & Definition of Done
 
-Sebelum menandai suatu task selesai:
-1. **Lakukan Self-Testing**: Jalankan suite unit test (`pytest tests/ -v`) dan pastikan seluruh test berstatus **PASSED**.
-2. **Perbarui Dokumentasi**:
+1. **Prinsip Modularitas Roadmap (Anti-Bloated Phase)**:
+   - **DILARANG KERAS** menumpuk pekerjaan baru, fitur tambahan, atau perbaikan bug ke dalam fase yang sudah selesai atau ke satu fase saja hingga fase tersebut menjadi gemuk (*bloated catch-all phase*).
+   - Setiap fitur baru, peningkatan arsitektur, atau perbaikan bug yang memiliki domain berbeda **WAJIB dibuatkan fase/milestone tersendiri yang berurutan** (misal: Fase 6, Fase 7, Fase 8, dst.) secara terisolasi dan spesifik di `TASK.md` dan `HANDOFF.md`.
+   - Setiap fase atau task baru **wajib dikerjakan pada Git branch terpisah** dan di-merge ke `main` dengan `--no-ff` hanya setelah seluruh pengujian lulus sempurna tanpa error.
+2. **Lakukan Self-Testing**: Jalankan suite unit test (`pytest tests/ -v`) dan type checker (`mypy config/ src/ tests/`) dan pastikan seluruh test berstatus **PASSED** (0 error).
+3. **Perbarui Dokumentasi**:
    - Beri tanda centang `[x]` pada task yang selesai di `TASK.md`.
    - Perbarui catatan estafet di `HANDOFF.md` yang merangkum apa yang baru saja diselesaikan dan apa langkah berikutnya.
-3. **Commit Terstruktur**: Buat Git commit dengan format Conventional Commits:
+4. **Commit Terstruktur**: Buat Git commit dengan format Conventional Commits:
    - `feat(...)`: Fitur baru
    - `fix(...)`: Perbaikan bug
    - `docs(...)`: Perubahan dokumentasi

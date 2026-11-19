@@ -252,18 +252,22 @@ source .venv/bin/activate
 python -m src.main
 ```
 
-### 5.2 Menjalankan 24/7 via Docker Compose
-Rekomendasi terbaik untuk deployment di VPS atau instance Always Free OCI:
+### 5.2 Menjalankan 24/7 via Docker Compose (GHCR Pre-Built Image)
+Rekomendasi terbaik untuk deployment di VPS atau instance Always Free OCI (mendukung x86_64 dan ARM64 Ampere):
 ```bash
-# 1. Jalankan container di latar belakang
+# 1. Tarik image terbaru dari GitHub Container Registry
+docker compose pull
+
+# 2. Jalankan container di latar belakang
 docker compose up -d
 
-# 2. Periksa status dan log bot secara real-time
+# 3. Periksa status dan log bot secara real-time
 docker compose logs -f oci-bot
 
-# 3. Menghentikan bot
+# 4. Menghentikan bot
 docker compose down
 ```
+*(Catatan: Jika ingin membangun ulang image dari kode sumber lokal, gunakan perintah `docker compose up -d --build`)*
 
 ---
 

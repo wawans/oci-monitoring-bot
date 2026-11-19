@@ -6,6 +6,7 @@ version: "3.8"
 
 services:
   oci-bot:
+    image: ghcr.io/wawans/oci-monitoring-bot:latest
     build:
       context: .
       dockerfile: Dockerfile

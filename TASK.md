@@ -162,3 +162,12 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **11.3 Pembaruan Dokumentasi**:
   - [x] Perbaiki URL git clone pada `README.md` baris 75 menjadi `https://github.com/wawans/oci-monitoring-bot.git`.
   - [x] Perbarui panduan deployment via GHCR pull di `README.md` dan `docs/USER_GUIDE.md`.
+
+---
+
+## [x] FASE 12: CI/CD Pipeline Hardening & Runner Dependencies Resolution
+- [x] **12.1 Pemisahan Dependensi Development & Static Analysis**:
+  - [x] Buat file `requirements-dev.txt` yang memuat `-r requirements.txt`, `mypy>=1.10.0`, dan `types-PyYAML>=6.0.0` guna menjaga kerampingan image Docker produksi.
+- [x] **12.2 Hardening Workflow GitHub Actions**:
+  - [x] Perbarui job `test` di `.github/workflows/docker-publish.yml` untuk menginstal `requirements-dev.txt`, menyelesaikan error `mypy: command not found (exit code 127)`.
+  - [x] Tambahkan environment variable `ACTIONS_ALLOW_NODE20_RUNNER: true` untuk meredam deprecation warning Node.js 20 pada runner GitHub Actions.

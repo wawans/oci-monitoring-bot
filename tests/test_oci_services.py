@@ -406,6 +406,41 @@ class TestBillingService:
         assert summary.forecast_spend == 76.50
         assert summary.is_budget_exceeded is True
 
+        # Verify UTC zero-hour precision on request details
+        call_args = mock_bundle.usage_client.request_summarized_usages.call_args
+        details = call_args[1]["request_summarized_usages_details"]
+        assert details.time_usage_started == datetime(2026, 11, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert details.time_usage_ended == datetime(2026, 12, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert details.time_usage_started.hour == 0
+        assert details.time_usage_started.minute == 0
+        assert details.time_usage_started.second == 0
+        assert details.time_usage_started.microsecond == 0
+        assert details.time_usage_ended.hour == 0
+        assert details.time_usage_ended.minute == 0
+        assert details.time_usage_ended.second == 0
+        assert details.time_usage_ended.microsecond == 0
+
+    async def test_payg_billing_december_year_rollover(self, mock_bundle: OCIClientBundle) -> None:
+        """Verify Usage API date precision and year rollover when querying December."""
+        mock_bundle.account_type = AccountType.PAYG
+        mock_bundle.usage_client.request_summarized_usages.return_value = MagicMock(
+            data=MagicMock(items=[])
+        )
+
+        service = BillingService()
+        ref_time = datetime(2026, 12, 15, 14, 25, 30, 123456, tzinfo=timezone.utc)
+        await service.get_billing_summary(mock_bundle, current_time=ref_time)
+
+        call_args = mock_bundle.usage_client.request_summarized_usages.call_args
+        details = call_args[1]["request_summarized_usages_details"]
+        assert details.time_usage_started == datetime(2026, 12, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert details.time_usage_ended == datetime(2027, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert details.time_usage_ended.year == 2027
+        assert details.time_usage_ended.month == 1
+        assert details.time_usage_ended.day == 1
+        assert details.time_usage_ended.hour == 0
+        assert details.time_usage_ended.microsecond == 0
+
     async def test_payg_usage_api_service_error_graceful_fallback(
         self, mock_bundle: OCIClientBundle
     ) -> None:

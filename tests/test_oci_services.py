@@ -297,6 +297,44 @@ class TestMonitoringService:
         )
         assert cpu == 88.5
 
+        # Verify that SummarizeMetricsDataDetails includes required namespace
+        call_args = mock_bundle.monitoring_client.summarize_metrics_data.call_args
+        details = call_args[1]["summarize_metrics_data_details"]
+        assert details.namespace == "oci_computeagent"
+        assert 'resourceId = "ocid1.instance.oc1..vm1"' in details.query
+        assert details.resolution == "1m"
+
+    async def test_get_cpu_history(self, mock_bundle: OCIClientBundle) -> None:
+        """Test retrieving CPU historical time-series points and namespace requirement."""
+        service = MonitoringService()
+
+        dp1 = MagicMock()
+        dp1.timestamp = datetime(2026, 11, 17, 0, 0, 0, tzinfo=timezone.utc)
+        dp1.value = 25.0
+
+        dp2 = MagicMock()
+        dp2.timestamp = datetime(2026, 11, 17, 1, 0, 0, tzinfo=timezone.utc)
+        dp2.value = 35.5
+
+        metric_data = MagicMock()
+        metric_data.aggregated_datapoints = [dp2, dp1]
+
+        mock_bundle.monitoring_client.summarize_metrics_data.return_value = MagicMock(
+            data=[metric_data]
+        )
+
+        history = await service.get_cpu_history(mock_bundle, "ocid1.instance.oc1..vm1", hours=6)
+        assert len(history) == 2
+        # Verify sorted ascending by timestamp
+        assert history[0][1] == 25.0
+        assert history[1][1] == 35.5
+
+        # Verify namespace is oci_computeagent
+        call_args = mock_bundle.monitoring_client.summarize_metrics_data.call_args
+        details = call_args[1]["summarize_metrics_data_details"]
+        assert details.namespace == "oci_computeagent"
+        assert details.resolution == "5m"
+
     async def test_get_latest_cpu_empty_or_error(self, mock_bundle: OCIClientBundle) -> None:
         """Test that missing datapoints or query error returns None gracefully."""
         service = MonitoringService()

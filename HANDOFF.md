@@ -5,9 +5,10 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide)**.
-- **Hasil Pengujian**: **66/66 Unit Test PASSED** (1.26s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide + Bugfix Namespace OCI)**.
+- **Hasil Pengujian**: **67/67 Unit Test PASSED** (1.25s) & Mypy Static Type Checking **0 issues** (32 source files).
 - **Observabilitas**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
+- **Perbaikan OCI Telemetry**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
 - **Git State**: Seluruh fase (Fase 1–6) telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 

@@ -99,3 +99,6 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **6.3 Unit Testing & Dokumentasi**:
   - [x] Buat unit test suite di `tests/test_logging.py` (5 unit test).
   - [x] Perbarui `docs/USER_GUIDE.md` dengan panduan logging debug.
+- [x] **6.4 Perbaikan Namespace OCI Monitoring API**:
+  - [x] Tambahkan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` di `src/oci_services/monitoring.py`.
+  - [x] Tambahkan validasi payload `namespace` dan unit test `get_cpu_history` di `tests/test_oci_services.py`.

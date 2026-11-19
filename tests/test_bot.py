@@ -1,10 +1,15 @@
 """Unit tests for Telegram bot formatters, keyboards, middleware, and push dispatcher."""
 
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from telegram import CallbackQuery, Message, Update, User
+from telegram.ext import ContextTypes
 
 from config.settings import Settings
 from src.bot.formatters import (
@@ -18,6 +23,11 @@ from src.bot.formatters import (
     format_status_overview,
     get_status_emoji,
 )
+from src.bot.handlers import (
+    callback_router,
+    get_instance_by_identifier,
+    global_error_handler,
+)
 from src.bot.keyboards import (
     get_action_confirm_keyboard,
     get_instance_actions_keyboard,
@@ -26,7 +36,7 @@ from src.bot.keyboards import (
     get_settings_keyboard,
 )
 from src.bot.middleware import admin_only, is_admin
-from src.database.models import Account, BillingSnapshot, InstanceState
+from src.database.models import Account, Base, BillingSnapshot, InstanceState
 from src.scheduler.detector import IncidentAlert, IncidentSeverity, IncidentType
 
 
@@ -176,7 +186,42 @@ class TestKeyboards:
         kb = get_instances_keyboard([vm])
         first_btn = kb.inline_keyboard[0][0]
         assert "tokyo-node" in first_btn.text
-        assert first_btn.callback_data == "vm_detail:ocid1.instance..btn_test"
+        assert first_btn.callback_data == f"vm_detail:{vm.short_id}"
+        assert len(first_btn.callback_data.encode("utf-8")) <= 64
+
+    def test_callback_data_64_byte_limit_with_real_ocid(self) -> None:
+        """Verify that all keyboard buttons stay strictly within Telegram's 64-byte callback_data limit."""
+        real_ocid = (
+            "ocid1.instance.oc1.ap-singapore-1.anzwsljrotfoceicgjjopconcmihscpvnkaqesxhyh7qttdddizwvmezvlia"
+        )
+        vm = InstanceState(
+            instance_id=real_ocid,
+            account_id="acc_01",
+            region="ap-singapore-1",
+            compartment_id="comp",
+            display_name="production-vm",
+            shape="VM.Standard.A1.Flex",
+            lifecycle_state="RUNNING",
+        )
+
+        keyboards = [
+            get_instances_keyboard([vm]),
+            get_instance_actions_keyboard(real_ocid, "RUNNING"),
+            get_instance_actions_keyboard(real_ocid, "STOPPED"),
+            get_action_confirm_keyboard(real_ocid, "START"),
+            get_action_confirm_keyboard(real_ocid, "STOP"),
+            get_action_confirm_keyboard(real_ocid, "SOFTRESET"),
+            get_main_menu_keyboard(),
+            get_settings_keyboard(5, 6),
+        ]
+
+        for kb in keyboards:
+            for row in kb.inline_keyboard:
+                for btn in row:
+                    cb = str(btn.callback_data or "")
+                    assert cb != ""
+                    cb_bytes = cb.encode("utf-8")
+                    assert len(cb_bytes) <= 64, f"Button callback '{cb}' exceeds 64 bytes: {len(cb_bytes)} bytes"
 
     def test_instance_actions_keyboard(self) -> None:
         """Verify contextual power action buttons based on instance lifecycle state."""
@@ -269,3 +314,124 @@ class TestMiddleware:
         args, kwargs = stranger_msg.reply_html.call_args
         msg_text = args[0] if args else kwargs.get("text", "")
         assert "Akses Ditolak" in msg_text
+
+
+DBFixture = tuple[async_sessionmaker[AsyncSession], Any]
+
+
+class TestHandlers:
+    """Tests for bot handlers, short_id resolution, and error handling."""
+
+    @pytest.fixture
+    async def db_session(self, tmp_path: Path) -> AsyncGenerator[DBFixture, None]:
+        db_file = tmp_path / "test_handler.db"
+        engine = create_async_engine(f"sqlite+aiosqlite:///{db_file}", echo=False)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_factory() as session:
+            acc = Account(
+                account_id="acc_singapore",
+                name="Singapore PAYG",
+                account_type="PAYG",
+                region="ap-singapore-1",
+                tenancy_ocid="ocid1.tenancy..singapore",
+                compartment_id="ocid1.compartment..singapore",
+                monthly_budget=100.0,
+            )
+            vm = InstanceState(
+                instance_id="ocid1.instance.oc1.ap-singapore-1.anzwsljrotfoceicgjjopconcmihscpvnkaqesxhyh7qttdddizwvmezvlia",
+                account_id="acc_singapore",
+                region="ap-singapore-1",
+                compartment_id="ocid1.compartment..singapore",
+                display_name="prod-singapore-vm",
+                shape="VM.Standard.A1.Flex",
+                lifecycle_state="RUNNING",
+            )
+            session.add(acc)
+            session.add(vm)
+            await session.commit()
+
+        yield session_factory, engine
+        await engine.dispose()
+
+    async def test_get_instance_by_identifier(self, db_session: DBFixture) -> None:
+        """Verify get_instance_by_identifier resolves both full OCID and 12-char short_id."""
+        session_factory, _ = db_session
+        long_ocid = "ocid1.instance.oc1.ap-singapore-1.anzwsljrotfoceicgjjopconcmihscpvnkaqesxhyh7qttdddizwvmezvlia"
+
+        async with session_factory() as session:
+            # 1. Lookup by full OCID
+            inst_full = await get_instance_by_identifier(session, long_ocid)
+            assert inst_full is not None
+            assert inst_full.instance_id == long_ocid
+            assert inst_full.display_name == "prod-singapore-vm"
+
+            # 2. Lookup by short_id (12 chars)
+            short_id = inst_full.short_id
+            assert len(short_id) == 12
+            inst_short = await get_instance_by_identifier(session, short_id)
+            assert inst_short is not None
+            assert inst_short.instance_id == long_ocid
+
+            # 3. Lookup non-existent id
+            inst_none = await get_instance_by_identifier(session, "non_existent_id")
+            assert inst_none is None
+
+    async def test_global_error_handler(self) -> None:
+        """Verify global_error_handler logs unhandled errors and notifies user without crashing."""
+        update = MagicMock(spec=Update)
+        msg = AsyncMock(spec=Message)
+        update.effective_message = msg
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.error = ValueError("Simulated unexpected failure")
+
+        await global_error_handler(update, context)
+        msg.reply_text.assert_called_once()
+        args, _ = msg.reply_text.call_args
+        assert "kesalahan internal" in args[0]
+
+        # Case when update has no message
+        update_empty = MagicMock(spec=Update)
+        update_empty.effective_message = None
+        await global_error_handler(update_empty, context)
+
+    @patch("src.bot.handlers.get_settings")
+    @patch("src.bot.middleware.get_settings")
+    async def test_callback_router_vm_detail_with_short_id(
+        self,
+        mock_mid_settings: MagicMock,
+        mock_hand_settings: MagicMock,
+        db_session: DBFixture,
+    ) -> None:
+        """Verify callback_router resolves vm_detail query using 12-char short_id."""
+        session_factory, _ = db_session
+        settings = Settings(
+            TELEGRAM_BOT_TOKEN="mock_token",
+            TELEGRAM_ADMIN_USER_ID=999888777,
+        )
+        mock_mid_settings.return_value = settings
+        mock_hand_settings.return_value = settings
+
+        long_ocid = "ocid1.instance.oc1.ap-singapore-1.anzwsljrotfoceicgjjopconcmihscpvnkaqesxhyh7qttdddizwvmezvlia"
+        vm = InstanceState(instance_id=long_ocid)
+        short_id = vm.short_id
+
+        update = MagicMock(spec=Update)
+        user = MagicMock(spec=User)
+        user.id = 999888777
+        update.effective_user = user
+        query = AsyncMock(spec=CallbackQuery)
+        query.data = f"vm_detail:{short_id}"
+        update.callback_query = query
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+
+        with patch("src.bot.handlers.get_session", side_effect=session_factory):
+            await callback_router(update, context)
+
+        query.answer.assert_called_once()
+        query.edit_message_text.assert_called_once()
+        call_kwargs = query.edit_message_text.call_args.kwargs
+        assert "prod-singapore-vm" in call_kwargs.get("text", "")
+

@@ -5,13 +5,14 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 8 Berhasil 100% + Centralized User Guide)**.
-- **Hasil Pengujian**: **71/71 Unit Test PASSED** (1.36s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 9 Berhasil 100% + Centralized User Guide)**.
+- **Hasil Pengujian**: **75/75 Unit Test PASSED** (1.41s) & Mypy Static Type Checking **0 issues** (32 source files).
 - **Observabilitas (Fase 6)**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
 - **Perbaikan OCI Telemetry (Fase 7)**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
 - **Startup Data Freshness (Fase 8)**: Pengecekan otomatis saat start aplikasi (`check_and_sync_on_startup()`). Jika database kosong atau data lebih lama dari interval, dilakukan polling catch-up paralel secara instan via `asyncio.gather`.
+- **Resolusi Batas Callback & Error Handler (Fase 9)**: Pemendekan identifier deterministik SHA-256 12-karakter (`short_id`) pada model database, inline keyboard, dan router callback Telegram, menjamin seluruh `callback_data` $\le 35$ bytes (jauh di bawah batas 64 byte Telegram dan mengeliminasi error `Button_data_invalid`). Registrasi `global_error_handler` terpusat pada `Application` untuk menangkap unhandled exceptions.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
-- **Git State**: Seluruh fase (Fase 1–8) telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
+- **Git State**: Seluruh fase (Fase 1–9) telah diselesaikan dengan branch-per-task dan di-merge ke `main` dengan `--no-ff`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 
 ---
 
@@ -64,11 +65,18 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 - `src/main.py`: Integrasi pemanggilan `await scheduler_mgr.check_and_sync_on_startup()` sebelum bot polling dimulai.
 - `tests/test_scheduler.py`: 4 unit test komprehensif (empty DB, stale data, fresh data, timezone-safe).
 
+### Fase 9: Resolusi Batas Callback Data Telegram & Global Error Handler
+- `src/database/models.py`: Helper `compute_short_id()` menghasilkan hash hex SHA-256 12-karakter dan property `short_id` pada model `InstanceState`.
+- `src/bot/keyboards.py`: Pemetaan button `vm_detail:`, `act_prompt:`, `act_exec:`, dan `vm_chart:` menggunakan `short_id`, menjamin seluruh payload callback $\le 35$ bytes (jauh di bawah batas 64 byte Telegram).
+- `src/bot/handlers.py`: Helper `get_instance_by_identifier()` yang mendukung dual-lookup (OCID penuh dan 12-karakter short ID), pembaruan router callback query, dan registrasi `global_error_handler` untuk menangkap unhandled exceptions.
+- `src/main.py`: Pendaftaran `app.add_error_handler(global_error_handler)` pada inisialisasi aplikasi Telegram bot.
+- `tests/test_bot.py`: Penambahan unit test verifikasi batas 64-byte untuk seluruh keyboard dengan real-world long OCID, tes fungsi `get_instance_by_identifier`, `global_error_handler`, dan `callback_router`.
+
 ---
 
 ## 3. Panduan Pemeliharaan & Pengembangan Selanjutnya
 Jika di masa mendatang ingin menambahkan fitur baru atau perbaikan:
-1. **Prinsip Anti-Bloat**: DILARANG menumpuk pekerjaan baru ke dalam fase yang sudah selesai. Setiap pekerjaan baru WAJIB dibuatkan fase/milestone baru berurutan (misal: Fase 9, dst.) secara modular dan terisolasi di `TASK.md` dan `HANDOFF.md`.
+1. **Prinsip Anti-Bloat**: DILARANG menumpuk pekerjaan baru ke dalam fase yang sudah selesai. Setiap pekerjaan baru WAJIB dibuatkan fase/milestone baru berurutan (misal: Fase 10, dst.) secara modular dan terisolasi di `TASK.md` dan `HANDOFF.md`.
 2. **Git Branching Per-Task**: Buat feature branch baru dari `main` untuk tiap fase/task yang dikerjakan.
 3. **Kepatuhan Guardrails**: Pastikan setiap penambahan kode baru mematuhi seluruh aturan di `AGENTS.md` (type hints lengkap, async first, pathlib.Path, structured logging, 0 print, isolasi error OCI).
 4. **Verifikasi Kualitas**: Jalankan automated test suite `pytest tests/ -v` dan `mypy config/ src/ tests/` (wajib 100% PASSED & 0 error) sebelum melakukan merge `--no-ff` ke `main`.

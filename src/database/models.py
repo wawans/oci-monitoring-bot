@@ -1,5 +1,6 @@
 """SQLAlchemy ORM models for OCI Multi-Account Monitoring Bot."""
 
+import hashlib
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -18,6 +19,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 def utc_now() -> datetime:
     """Return current UTC datetime with timezone awareness."""
     return datetime.now(timezone.utc)
+
+
+def compute_short_id(instance_id: str) -> str:
+    """Return deterministic 12-character hex identifier derived from instance OCID."""
+    return hashlib.sha256(instance_id.encode("utf-8")).hexdigest()[:12]
 
 
 class Base(DeclarativeBase):
@@ -129,6 +135,11 @@ class InstanceState(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    @property
+    def short_id(self) -> str:
+        """Return deterministic 12-character hex identifier derived from instance OCID."""
+        return compute_short_id(self.instance_id)
 
     def __repr__(self) -> str:
         return f"<InstanceState(id='{self.instance_id}', name='{self.display_name}', state='{self.lifecycle_state}')>"

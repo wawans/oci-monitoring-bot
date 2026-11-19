@@ -5,7 +5,14 @@ from typing import List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from src.bot.formatters import get_status_emoji
-from src.database.models import InstanceState
+from src.database.models import InstanceState, compute_short_id
+
+
+def to_short_id(identifier: str) -> str:
+    """Normalize instance identifier to 12-character short_id to satisfy Telegram 64-byte callback limit."""
+    if len(identifier) > 12:
+        return compute_short_id(identifier)
+    return identifier
 
 
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -30,7 +37,7 @@ def get_instances_keyboard(instances: List[InstanceState]) -> InlineKeyboardMark
         emoji = get_status_emoji(inst.lifecycle_state)
         label = f"{emoji} {inst.display_name} ({inst.region})"
         buttons.append([
-            InlineKeyboardButton(label, callback_data=f"vm_detail:{inst.instance_id}")
+            InlineKeyboardButton(label, callback_data=f"vm_detail:{inst.short_id}")
         ])
 
     # Footer navigation
@@ -46,26 +53,27 @@ def get_instance_actions_keyboard(
     lifecycle_state: str,
 ) -> InlineKeyboardMarkup:
     """Return power management and metric actions for a specific instance."""
+    sid = to_short_id(instance_id)
     normalized = lifecycle_state.upper()
     action_row = []
 
     if normalized == "STOPPED":
         action_row.append(
-            InlineKeyboardButton("▶️ Start", callback_data=f"act_prompt:{instance_id}:START")
+            InlineKeyboardButton("▶️ Start", callback_data=f"act_prompt:{sid}:START")
         )
     elif normalized == "RUNNING":
         action_row.extend([
-            InlineKeyboardButton("⏹️ Stop", callback_data=f"act_prompt:{instance_id}:STOP"),
-            InlineKeyboardButton("🔄 Reboot", callback_data=f"act_prompt:{instance_id}:SOFTRESET"),
+            InlineKeyboardButton("⏹️ Stop", callback_data=f"act_prompt:{sid}:STOP"),
+            InlineKeyboardButton("🔄 Reboot", callback_data=f"act_prompt:{sid}:SOFTRESET"),
         ])
     else:
         action_row.append(
-            InlineKeyboardButton("⏹️ Force Stop", callback_data=f"act_prompt:{instance_id}:STOP")
+            InlineKeyboardButton("⏹️ Force Stop", callback_data=f"act_prompt:{sid}:STOP")
         )
 
     buttons = [
         action_row,
-        [InlineKeyboardButton("📈 Lihat Grafik CPU", callback_data=f"vm_chart:{instance_id}")],
+        [InlineKeyboardButton("📈 Lihat Grafik CPU", callback_data=f"vm_chart:{sid}")],
         [InlineKeyboardButton("🔙 Kembali ke Daftar VM", callback_data="nav_instances")],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -76,15 +84,16 @@ def get_action_confirm_keyboard(
     action: str,
 ) -> InlineKeyboardMarkup:
     """Return two-step confirmation dialogue buttons (ADR-007)."""
+    sid = to_short_id(instance_id)
     buttons = [
         [
             InlineKeyboardButton(
                 "✅ Ya, Lanjutkan Eksekusi",
-                callback_data=f"act_exec:{instance_id}:{action}",
+                callback_data=f"act_exec:{sid}:{action}",
             ),
             InlineKeyboardButton(
                 "❌ Batalkan",
-                callback_data=f"vm_detail:{instance_id}",
+                callback_data=f"vm_detail:{sid}",
             ),
         ]
     ]

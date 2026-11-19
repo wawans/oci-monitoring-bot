@@ -4,6 +4,7 @@ import logging
 from typing import Any, Optional
 
 from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot, CallbackQuery, Update
 from telegram.ext import ContextTypes
 
@@ -28,7 +29,14 @@ from src.bot.keyboards import (
 )
 from src.bot.middleware import admin_only
 from src.database.connection import get_session, set_bot_setting
-from src.database.models import Account, AuditLog, BillingSnapshot, InstanceState, MetricsLog
+from src.database.models import (
+    Account,
+    AuditLog,
+    BillingSnapshot,
+    InstanceState,
+    MetricsLog,
+    compute_short_id,
+)
 from src.scheduler.detector import IncidentAlert
 
 logger = logging.getLogger(__name__)
@@ -186,6 +194,32 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 # -----------------------------------------------------------------------------
+# Instance Identifier Resolver Helper
+# -----------------------------------------------------------------------------
+async def get_instance_by_identifier(
+    session: AsyncSession,
+    identifier: str,
+) -> Optional[InstanceState]:
+    """Resolve an instance by full instance_id or by short_id (12-char SHA-256 prefix)."""
+    # 1. Direct match on instance_id (fast indexed lookup)
+    res = await session.execute(
+        select(InstanceState).where(InstanceState.instance_id == identifier)
+    )
+    inst: Optional[InstanceState] = res.scalars().first()
+    if inst is not None:
+        return inst
+
+    # 2. Match on 12-char short_id prefix
+    all_res = await session.execute(select(InstanceState))
+    for item in all_res.scalars().all():
+        inst_item: InstanceState = item
+        if inst_item.short_id == identifier or compute_short_id(inst_item.instance_id) == identifier:
+            return inst_item
+
+    return None
+
+
+# -----------------------------------------------------------------------------
 # Callback Query Router
 # -----------------------------------------------------------------------------
 @admin_only
@@ -289,12 +323,9 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Instance Detail
     if data.startswith("vm_detail:"):
-        instance_id = data.split("vm_detail:")[1]
+        identifier = data.split("vm_detail:")[1]
         async with get_session() as session:
-            res = await session.execute(
-                select(InstanceState).where(InstanceState.instance_id == instance_id)
-            )
-            inst = res.scalars().first()
+            inst = await get_instance_by_identifier(session, identifier)
             if not inst:
                 await query.edit_message_text("❌ Instance tidak ditemukan di database.")
                 return
@@ -304,54 +335,51 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             val = acc_res.scalars().first()
             account_name = str(val) if val else inst.account_id
+            actions_kb = get_instance_actions_keyboard(inst.short_id, inst.lifecycle_state)
 
         await query.edit_message_text(
             text=format_instance_detail(inst, account_name),
             parse_mode="HTML",
-            reply_markup=get_instance_actions_keyboard(inst.instance_id, inst.lifecycle_state),
+            reply_markup=actions_kb,
         )
         return
 
     # Two-Step Power Action Confirmation Prompt (ADR-007)
     if data.startswith("act_prompt:"):
         parts = data.split(":")
-        instance_id = parts[1]
+        identifier = parts[1]
         action = parts[2]
 
         async with get_session() as session:
-            res = await session.execute(
-                select(InstanceState.display_name).where(InstanceState.instance_id == instance_id)
-            )
-            val_vm = res.scalars().first()
-            vm_name = str(val_vm) if val_vm else instance_id
+            inst = await get_instance_by_identifier(session, identifier)
+            vm_name = inst.display_name if inst else identifier
+            sid = inst.short_id if inst else identifier
 
         await query.edit_message_text(
             text=format_action_confirm_prompt(vm_name, action),
             parse_mode="HTML",
-            reply_markup=get_action_confirm_keyboard(instance_id, action),
+            reply_markup=get_action_confirm_keyboard(sid, action),
         )
         return
 
     # Power Action Execution (ADR-007)
     if data.startswith("act_exec:"):
         parts = data.split(":")
-        instance_id = parts[1]
+        identifier = parts[1]
         action = parts[2]
 
         client_factory = context.bot_data.get("client_factory")
         compute_service = context.bot_data.get("compute_service")
 
         async with get_session() as session:
-            res = await session.execute(
-                select(InstanceState).where(InstanceState.instance_id == instance_id)
-            )
-            inst = res.scalars().first()
+            inst = await get_instance_by_identifier(session, identifier)
             if not inst:
                 await query.edit_message_text("❌ Instance tidak ditemukan.")
                 return
 
             account_id = inst.account_id
             vm_name = inst.display_name
+            instance_id = inst.instance_id
 
         bundle = client_factory.get_bundle(account_id) if client_factory else None
         success = False
@@ -388,16 +416,15 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # On-Demand CPU Chart Generation
     if data.startswith("vm_chart:"):
-        instance_id = data.split("vm_chart:")[1]
+        identifier = data.split("vm_chart:")[1]
 
         async with get_session() as session:
-            res = await session.execute(
-                select(InstanceState).where(InstanceState.instance_id == instance_id)
-            )
-            inst = res.scalars().first()
+            inst = await get_instance_by_identifier(session, identifier)
             if not inst:
                 await query.edit_message_text("❌ Instance tidak ditemukan.")
                 return
+
+            instance_id = inst.instance_id
 
             # Query historical CPU datapoints from SQLite METRICS_LOG
             metrics_res = await session.execute(
@@ -449,3 +476,23 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 reply_markup=get_settings_keyboard(status["metrics_interval_minutes"], new_h),
             )
         return
+
+
+# -----------------------------------------------------------------------------
+# Global Error Handler
+# -----------------------------------------------------------------------------
+async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log unhandled exceptions that occurred during bot execution."""
+    logger.error(
+        "Unhandled exception in telegram bot update: %s",
+        context.error,
+        exc_info=context.error,
+    )
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "⚠️ Terjadi kesalahan internal saat memproses perintah Anda. Tim kami telah mencatat log kesalahan ini."
+            )
+        except Exception:
+            pass
+

@@ -124,3 +124,19 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
   - [x] Hubungkan `await scheduler_mgr.check_and_sync_on_startup()` di `src/main.py` sebelum `application.start_polling()`.
 - [x] **8.4 Unit Testing Komprehensif**:
   - [x] Buat 4 unit test di `tests/test_scheduler.py` (empty DB, stale data, fresh data, timezone-safe).
+
+---
+
+## [x] FASE 9: Resolusi Batas Callback Data Telegram & Global Error Handler
+- [x] **9.1 Pemendekan Identifier Deterministik (Short ID)**:
+  - [x] Tambahkan helper `compute_short_id(instance_id: str) -> str` (SHA-256 12-karakter hex) dan property `short_id` pada model `InstanceState` di `src/database/models.py`.
+  - [x] Perbarui `src/bot/keyboards.py` untuk menggunakan `short_id` pada seluruh inline button (`vm_detail:`, `act_prompt:`, `act_exec:`, `vm_chart:`), memastikan panjang payload selalu $\le 35$ bytes (jauh di bawah batas 64 byte Telegram).
+- [x] **9.2 Dual-Identifier Resolver & Handlers Integration**:
+  - [x] Buat helper `get_instance_by_identifier(session, identifier)` di `src/bot/handlers.py` yang mendukung lookup via full OCID maupun 12-char `short_id`.
+  - [x] Perbarui handler callback query (`vm_detail`, `act_prompt`, `act_exec`, `vm_chart`) agar meresolusi instance via `short_id` dan meneruskan OCID asli ke OCI SDK dan `AuditLog`.
+- [x] **9.3 Global Application Error Handler**:
+  - [x] Buat `global_error_handler` di `src/bot/handlers.py` untuk menangkap dan me-log unhandled exceptions secara terstruktur.
+  - [x] Daftarkan `app.add_error_handler(global_error_handler)` di `src/main.py`.
+- [x] **9.4 Unit Testing & Validasi Batas Callback**:
+  - [x] Tambahkan unit test verifikasi batas 64-byte untuk seluruh keyboard dengan real-world long OCID di `tests/test_bot.py`.
+  - [x] Tambahkan unit test untuk `get_instance_by_identifier`, `global_error_handler`, dan `callback_router` dengan `short_id` di `tests/test_bot.py`.

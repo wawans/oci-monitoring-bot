@@ -5,8 +5,9 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide + Bugfix Namespace OCI)**.
-- **Hasil Pengujian**: **67/67 Unit Test PASSED** (1.25s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide + Bugfix Namespace OCI + Startup Catch-Up Sync)**.
+- **Hasil Pengujian**: **71/71 Unit Test PASSED** (1.36s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Startup Data Freshness**: Pengecekan otomatis saat start aplikasi (`check_and_sync_on_startup()`). Jika database kosong atau data lebih lama dari interval, dilakukan polling catch-up paralel secara instan.
 - **Observabilitas**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
 - **Perbaikan OCI Telemetry**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
@@ -47,11 +48,13 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 - `.dockerignore`: Proteksi menyeluruh dari data sensitif, database lokal, dan file cache saat build context.
 - `README.md`: Panduan komprehensif mulai dari setup lokal, setup OCI API keys, deployment Docker Compose, hingga manual bot.
 
-### Fase 6: Observabilitas & Conditional Rotating File Logging
+### Fase 6: Observabilitas, Bugfix Namespace & Startup Catch-Up Sync
 - `src/logging_config.py`: Pengaturan logging terpadu dengan `setup_logging()`. Mengaktifkan `RotatingFileHandler` ke `logs/oci_bot.log` hanya jika `LOG_LEVEL = DEBUG` (5MB per file, 3 backups) dengan format rinci nama berkas & nomor baris. Zero disk file I/O pada mode `INFO`/`WARNING`/`ERROR`.
 - `config/settings.py` & `.env.example`: Konfigurasi deklaratif untuk `LOG_LEVEL`, `LOG_FILE_PATH`, `LOG_FILE_MAX_BYTES`, dan `LOG_FILE_BACKUP_COUNT`.
 - `Dockerfile` & `docker-compose.yml`: Persiapan direktori `/app/logs` dan volume mount `./logs:/app/logs`.
-- `tests/test_logging.py`: 5 unit test komprehensif untuk pengujian kondisional dan rotasi berkas.
+- `src/oci_services/monitoring.py`: Penambahan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` untuk kueri metrik dan grafik riwayat CPU.
+- `src/scheduler/manager.py` & `src/scheduler/tasks.py`: Evaluasi usia data database saat start (`check_and_sync_on_startup()`). Jika data kosong atau usang ($\ge$ interval), task dieksekusi secara instan dan paralel via `asyncio.gather`.
+- `tests/`: 71 unit test terintegrasi komprehensif (100% passed).
 
 ---
 

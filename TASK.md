@@ -102,3 +102,8 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **6.4 Perbaikan Namespace OCI Monitoring API**:
   - [x] Tambahkan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` di `src/oci_services/monitoring.py`.
   - [x] Tambahkan validasi payload `namespace` dan unit test `get_cpu_history` di `tests/test_oci_services.py`.
+- [x] **6.5 Pengecekan Kesegaran Data Startup (Catch-Up Sync)**:
+  - [x] Tambahkan pencatatan `last_poll_metrics_at` dan `last_poll_billing_at` di `src/scheduler/tasks.py`.
+  - [x] Buat evaluasi usia data dan pemicu catch-up instan (`check_and_sync_on_startup`) di `src/scheduler/manager.py`.
+  - [x] Integrasikan pemanggilan `check_and_sync_on_startup` di `src/main.py`.
+  - [x] Buat 4 unit test di `tests/test_scheduler.py` (empty DB, stale data, fresh data, timezone-safe).

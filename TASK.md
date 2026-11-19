@@ -99,11 +99,28 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **6.3 Unit Testing & Dokumentasi**:
   - [x] Buat unit test suite di `tests/test_logging.py` (5 unit test).
   - [x] Perbarui `docs/USER_GUIDE.md` dengan panduan logging debug.
-- [x] **6.4 Perbaikan Namespace OCI Monitoring API**:
+
+---
+
+## [x] FASE 7: Penguatan & Perbaikan OCI Telemetry Layer
+- [x] **7.1 Perbaikan Namespace OCI Monitoring API**:
   - [x] Tambahkan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` di `src/oci_services/monitoring.py`.
-  - [x] Tambahkan validasi payload `namespace` dan unit test `get_cpu_history` di `tests/test_oci_services.py`.
-- [x] **6.5 Pengecekan Kesegaran Data Startup (Catch-Up Sync)**:
-  - [x] Tambahkan pencatatan `last_poll_metrics_at` dan `last_poll_billing_at` di `src/scheduler/tasks.py`.
-  - [x] Buat evaluasi usia data dan pemicu catch-up instan (`check_and_sync_on_startup`) di `src/scheduler/manager.py`.
-  - [x] Integrasikan pemanggilan `check_and_sync_on_startup` di `src/main.py`.
+  - [x] Perbaiki penolakan HTTP 400 `InvalidParameter: namespace cannot be null` dari OCI Telemetry endpoint.
+- [x] **7.2 Pengujian Unit & Validasi Payload**:
+  - [x] Tambahkan assertion eksplisit pada mock monitoring client untuk memvalidasi atribut `namespace`.
+  - [x] Tambahkan unit test `test_get_cpu_history` di `tests/test_oci_services.py`.
+
+---
+
+## [x] FASE 8: Siklus Hidup & Sinkronisasi Kesegaran Data Startup (Catch-Up Sync)
+- [x] **8.1 Persistensi Timestamp Siklus Polling**:
+  - [x] Tambahkan pencatatan `last_poll_metrics_at` ke tabel `bot_settings` di `src/scheduler/tasks.py`.
+  - [x] Tambahkan pencatatan `last_poll_billing_at` ke tabel `bot_settings` di `src/scheduler/tasks.py`.
+- [x] **8.2 Evaluasi Usia Data Database & Catch-Up Poller**:
+  - [x] Buat fungsi normalisasi timezone `_ensure_utc()` untuk mencegah `TypeError` selisih waktu naive SQLite.
+  - [x] Buat method `get_latest_metrics_timestamp()` dan `get_latest_billing_timestamp()` di `SchedulerManager`.
+  - [x] Buat method `check_and_sync_on_startup()` di `src/scheduler/manager.py` untuk memicu polling catch-up paralel instan jika data kosong atau usang ($\ge$ interval).
+- [x] **8.3 Integrasi ke Runner Utama**:
+  - [x] Hubungkan `await scheduler_mgr.check_and_sync_on_startup()` di `src/main.py` sebelum `application.start_polling()`.
+- [x] **8.4 Unit Testing Komprehensif**:
   - [x] Buat 4 unit test di `tests/test_scheduler.py` (empty DB, stale data, fresh data, timezone-safe).

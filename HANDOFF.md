@@ -5,13 +5,13 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide + Bugfix Namespace OCI + Startup Catch-Up Sync)**.
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 8 Berhasil 100% + Centralized User Guide)**.
 - **Hasil Pengujian**: **71/71 Unit Test PASSED** (1.36s) & Mypy Static Type Checking **0 issues** (32 source files).
-- **Startup Data Freshness**: Pengecekan otomatis saat start aplikasi (`check_and_sync_on_startup()`). Jika database kosong atau data lebih lama dari interval, dilakukan polling catch-up paralel secara instan.
-- **Observabilitas**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
-- **Perbaikan OCI Telemetry**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
+- **Observabilitas (Fase 6)**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
+- **Perbaikan OCI Telemetry (Fase 7)**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
+- **Startup Data Freshness (Fase 8)**: Pengecekan otomatis saat start aplikasi (`check_and_sync_on_startup()`). Jika database kosong atau data lebih lama dari interval, dilakukan polling catch-up paralel secara instan via `asyncio.gather`.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
-- **Git State**: Seluruh fase (Fase 1–6) telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
+- **Git State**: Seluruh fase (Fase 1–8) telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 
 ---
 
@@ -48,13 +48,21 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 - `.dockerignore`: Proteksi menyeluruh dari data sensitif, database lokal, dan file cache saat build context.
 - `README.md`: Panduan komprehensif mulai dari setup lokal, setup OCI API keys, deployment Docker Compose, hingga manual bot.
 
-### Fase 6: Observabilitas, Bugfix Namespace & Startup Catch-Up Sync
+### Fase 6: Observabilitas & Conditional Rotating File Logging
 - `src/logging_config.py`: Pengaturan logging terpadu dengan `setup_logging()`. Mengaktifkan `RotatingFileHandler` ke `logs/oci_bot.log` hanya jika `LOG_LEVEL = DEBUG` (5MB per file, 3 backups) dengan format rinci nama berkas & nomor baris. Zero disk file I/O pada mode `INFO`/`WARNING`/`ERROR`.
 - `config/settings.py` & `.env.example`: Konfigurasi deklaratif untuk `LOG_LEVEL`, `LOG_FILE_PATH`, `LOG_FILE_MAX_BYTES`, dan `LOG_FILE_BACKUP_COUNT`.
 - `Dockerfile` & `docker-compose.yml`: Persiapan direktori `/app/logs` dan volume mount `./logs:/app/logs`.
-- `src/oci_services/monitoring.py`: Penambahan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` untuk kueri metrik dan grafik riwayat CPU.
-- `src/scheduler/manager.py` & `src/scheduler/tasks.py`: Evaluasi usia data database saat start (`check_and_sync_on_startup()`). Jika data kosong atau usang ($\ge$ interval), task dieksekusi secara instan dan paralel via `asyncio.gather`.
-- `tests/`: 71 unit test terintegrasi komprehensif (100% passed).
+- `tests/test_logging.py`: 5 unit test komprehensif untuk pengujian kondisional dan rotasi berkas.
+
+### Fase 7: Penguatan & Perbaikan OCI Telemetry Layer
+- `src/oci_services/monitoring.py`: Penambahan parameter wajib `namespace="oci_computeagent"` pada `SummarizeMetricsDataDetails` untuk kueri metrik dan grafik riwayat CPU, menyelesaikan isu penolakan HTTP 400 OCI Telemetry API.
+- `tests/test_oci_services.py`: Validasi payload `namespace` dan unit test `test_get_cpu_history`.
+
+### Fase 8: Siklus Hidup & Sinkronisasi Kesegaran Data Startup (Catch-Up Sync)
+- `src/scheduler/tasks.py`: Pencatatan otomatis timestamp `last_poll_metrics_at` dan `last_poll_billing_at` ke tabel `bot_settings`.
+- `src/scheduler/manager.py`: Fungsi normalisasi timezone `_ensure_utc()`, evaluasi usia data database terhadap interval aktif, dan eksekusi catch-up paralel via `asyncio.gather`.
+- `src/main.py`: Integrasi pemanggilan `await scheduler_mgr.check_and_sync_on_startup()` sebelum bot polling dimulai.
+- `tests/test_scheduler.py`: 4 unit test komprehensif (empty DB, stale data, fresh data, timezone-safe).
 
 ---
 

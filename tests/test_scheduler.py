@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Tuple
 from unittest.mock import AsyncMock, MagicMock
@@ -106,6 +106,193 @@ class TestSchedulerManager:
             mgr.shutdown(wait=False)
             await asyncio.sleep(0.01)
             assert mgr.scheduler.running is False
+
+    async def test_startup_sync_empty_database_triggers_both(
+        self, scheduler_db: SchedDBFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When database is empty, startup sync should trigger both metrics and billing polls."""
+        session_factory, _ = scheduler_db
+
+        mock_factory = MagicMock()
+        mock_compute = MagicMock()
+        mock_monitoring = MagicMock()
+        mock_billing = MagicMock()
+
+        mgr = SchedulerManager(
+            client_factory=mock_factory,
+            compute_service=mock_compute,
+            monitoring_service=mock_monitoring,
+            billing_service=mock_billing,
+            session_factory=session_factory,
+        )
+
+        mock_poll_m = AsyncMock(return_value=1)
+        mock_poll_b = AsyncMock(return_value=1)
+        monkeypatch.setattr(mgr, "trigger_metrics_poll", mock_poll_m)
+        monkeypatch.setattr(mgr, "trigger_billing_poll", mock_poll_b)
+
+        result = await mgr.check_and_sync_on_startup()
+
+        assert result["metrics"]["stale_or_empty"] is True
+        assert result["metrics"]["polled"] is True
+        assert result["billing"]["stale_or_empty"] is True
+        assert result["billing"]["polled"] is True
+
+        mock_poll_m.assert_awaited_once()
+        mock_poll_b.assert_awaited_once()
+
+    async def test_startup_sync_stale_metrics_triggers_metrics_only(
+        self, scheduler_db: SchedDBFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When metrics data is older than interval but billing is fresh, only metrics is polled."""
+        session_factory, _ = scheduler_db
+        now = datetime.now(timezone.utc)
+
+        # Stale metrics (2h old vs 10m interval) and fresh billing (30m old vs 6h interval)
+        async with session_factory() as session:
+            stale_inst = InstanceState(
+                instance_id="ocid1.instance.oc1..stale",
+                account_id="acc_sched_test",
+                region="ap-singapore-1",
+                compartment_id="ocid1.compartment.oc1..test",
+                display_name="stale-vm",
+                shape="VM.Standard.E4.Flex",
+                lifecycle_state="RUNNING",
+                last_seen=now - timedelta(hours=2),
+            )
+            session.add(stale_inst)
+
+            fresh_snap = BillingSnapshot(
+                account_id="acc_sched_test",
+                amount=15.0,
+                currency="USD",
+                billing_period="2026-11",
+                recorded_at=now - timedelta(minutes=30),
+            )
+            session.add(fresh_snap)
+            await session.commit()
+
+        mock_factory = MagicMock()
+        mock_compute = MagicMock()
+        mock_monitoring = MagicMock()
+        mock_billing = MagicMock()
+
+        mgr = SchedulerManager(
+            client_factory=mock_factory,
+            compute_service=mock_compute,
+            monitoring_service=mock_monitoring,
+            billing_service=mock_billing,
+            session_factory=session_factory,
+        )
+        mgr.current_metrics_interval = 10
+        mgr.current_billing_interval = 6
+
+        mock_poll_m = AsyncMock(return_value=1)
+        mock_poll_b = AsyncMock(return_value=1)
+        monkeypatch.setattr(mgr, "trigger_metrics_poll", mock_poll_m)
+        monkeypatch.setattr(mgr, "trigger_billing_poll", mock_poll_b)
+
+        result = await mgr.check_and_sync_on_startup()
+
+        assert result["metrics"]["stale_or_empty"] is True
+        assert result["metrics"]["polled"] is True
+        assert result["billing"]["stale_or_empty"] is False
+        assert result["billing"]["polled"] is False
+
+        mock_poll_m.assert_awaited_once()
+        mock_poll_b.assert_not_awaited()
+
+    async def test_startup_sync_fresh_data_skips_both(
+        self, scheduler_db: SchedDBFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When both metrics and billing data are fresh, startup catch-up is skipped."""
+        session_factory, _ = scheduler_db
+        now = datetime.now(timezone.utc)
+
+        async with session_factory() as session:
+            fresh_inst = InstanceState(
+                instance_id="ocid1.instance.oc1..fresh",
+                account_id="acc_sched_test",
+                region="ap-singapore-1",
+                compartment_id="ocid1.compartment.oc1..test",
+                display_name="fresh-vm",
+                shape="VM.Standard.E4.Flex",
+                lifecycle_state="RUNNING",
+                last_seen=now - timedelta(minutes=2),
+            )
+            session.add(fresh_inst)
+
+            fresh_snap = BillingSnapshot(
+                account_id="acc_sched_test",
+                amount=15.0,
+                currency="USD",
+                billing_period="2026-11",
+                recorded_at=now - timedelta(hours=1),
+            )
+            session.add(fresh_snap)
+            await session.commit()
+
+        mock_factory = MagicMock()
+        mock_compute = MagicMock()
+        mock_monitoring = MagicMock()
+        mock_billing = MagicMock()
+
+        mgr = SchedulerManager(
+            client_factory=mock_factory,
+            compute_service=mock_compute,
+            monitoring_service=mock_monitoring,
+            billing_service=mock_billing,
+            session_factory=session_factory,
+        )
+        mgr.current_metrics_interval = 10
+        mgr.current_billing_interval = 6
+
+        mock_poll_m = AsyncMock(return_value=1)
+        mock_poll_b = AsyncMock(return_value=1)
+        monkeypatch.setattr(mgr, "trigger_metrics_poll", mock_poll_m)
+        monkeypatch.setattr(mgr, "trigger_billing_poll", mock_poll_b)
+
+        result = await mgr.check_and_sync_on_startup()
+
+        assert result["metrics"]["stale_or_empty"] is False
+        assert result["metrics"]["polled"] is False
+        assert result["billing"]["stale_or_empty"] is False
+        assert result["billing"]["polled"] is False
+
+        mock_poll_m.assert_not_awaited()
+        mock_poll_b.assert_not_awaited()
+
+    async def test_startup_sync_naive_timezone_safe(
+        self, scheduler_db: SchedDBFixture
+    ) -> None:
+        """Verify that offset-naive datetimes from SQLite are safely handled without TypeError."""
+        session_factory, _ = scheduler_db
+        naive_dt = datetime.now() - timedelta(minutes=3)
+
+        async with session_factory() as session:
+            naive_inst = InstanceState(
+                instance_id="ocid1.instance.oc1..naive",
+                account_id="acc_sched_test",
+                region="ap-singapore-1",
+                compartment_id="ocid1.compartment.oc1..test",
+                display_name="naive-vm",
+                shape="VM.Standard.E4.Flex",
+                lifecycle_state="RUNNING",
+                last_seen=naive_dt,
+            )
+            session.add(naive_inst)
+            await session.commit()
+
+        mgr = SchedulerManager(
+            client_factory=MagicMock(),
+            compute_service=MagicMock(),
+            monitoring_service=MagicMock(),
+            billing_service=MagicMock(),
+            session_factory=session_factory,
+        )
+        latest = await mgr.get_latest_metrics_timestamp()
+        assert latest is not None
+        assert latest.tzinfo == timezone.utc
 
 
 class TestSchedulerTasks:

@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.database.connection import set_bot_setting
 from src.database.models import BillingSnapshot, InstanceState, MetricsLog
 from src.oci_services.billing import BillingService
 from src.oci_services.client_factory import OCIClientFactory
@@ -144,6 +145,15 @@ async def poll_metrics_task(
                 e,
             )
 
+    # Record completion timestamp in bot_settings
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        async with session_factory() as session:
+            await set_bot_setting(session, "last_poll_metrics_at", now_iso)
+            await session.commit()
+    except Exception as setting_err:
+        logger.warning("Failed to record last_poll_metrics_at: %s", setting_err)
+
     logger.debug("Metrics poll cycle completed. Evaluated %d instances.", total_evaluated)
     return total_evaluated
 
@@ -210,6 +220,15 @@ async def poll_billing_task(
                 bundle.account_name,
                 e,
             )
+
+    # Record completion timestamp in bot_settings
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        async with session_factory() as session:
+            await set_bot_setting(session, "last_poll_billing_at", now_iso)
+            await session.commit()
+    except Exception as setting_err:
+        logger.warning("Failed to record last_poll_billing_at: %s", setting_err)
 
     logger.debug("Billing poll cycle completed. Polled %d accounts.", polled_count)
     return polled_count

@@ -166,6 +166,14 @@ async def main_async() -> None:
     application.bot_data["scheduler_manager"] = scheduler_mgr
     scheduler_mgr.start(metrics_interval_minutes=m_interval, billing_interval_hours=b_interval)
 
+    # 8b. Evaluate database data freshness on startup
+    logger.info("Evaluating database data freshness on startup...")
+    sync_results = await scheduler_mgr.check_and_sync_on_startup()
+    if sync_results["metrics"]["polled"]:
+        logger.info("Startup catch-up: compute metrics refreshed immediately.")
+    if sync_results["billing"]["polled"]:
+        logger.info("Startup catch-up: billing snapshots refreshed immediately.")
+
     # 9. Start Bot Polling
     logger.info("Bot is now running. Listening for Telegram updates...")
     await application.initialize()

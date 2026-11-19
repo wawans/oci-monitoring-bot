@@ -1,14 +1,28 @@
 """Dynamic background scheduler manager with runtime rescheduling (ADR-006)."""
 
+import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy import func, select
 
+from src.database.connection import get_bot_setting
+from src.database.models import BillingSnapshot, InstanceState
 from src.scheduler.tasks import AlertCallback, poll_billing_task, poll_metrics_task
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Ensure datetime object is timezone-aware in UTC format."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class SchedulerManager:
@@ -133,6 +147,176 @@ class SchedulerManager:
         except Exception as e:
             logger.error("Failed to reschedule billing poller: %s", e)
             return False
+
+    async def trigger_metrics_poll(self) -> int:
+        """Immediately execute a compute and metrics polling cycle.
+
+        Returns:
+            Number of compute instances evaluated.
+        """
+        return await poll_metrics_task(
+            client_factory=self.client_factory,
+            compute_service=self.compute_service,
+            monitoring_service=self.monitoring_service,
+            session_factory=self.session_factory,
+            alert_callback=self.alert_callback,
+        )
+
+    async def trigger_billing_poll(self) -> int:
+        """Immediately execute a billing and forecast polling cycle.
+
+        Returns:
+            Number of accounts successfully polled.
+        """
+        return await poll_billing_task(
+            client_factory=self.client_factory,
+            billing_service=self.billing_service,
+            session_factory=self.session_factory,
+            alert_callback=self.alert_callback,
+        )
+
+    async def get_latest_metrics_timestamp(self) -> Optional[datetime]:
+        """Retrieve most recent metrics update timestamp across instance_state and bot_settings.
+
+        Returns:
+            Timezone-aware UTC datetime of latest update, or None if no data exists.
+        """
+        async with self.session_factory() as session:
+            # 1. From InstanceState
+            res = await session.execute(select(func.max(InstanceState.last_seen)))
+            db_max = res.scalar()
+
+            # 2. From bot_settings key 'last_poll_metrics_at'
+            setting_val = await get_bot_setting(session, "last_poll_metrics_at")
+            setting_dt: Optional[datetime] = None
+            if setting_val:
+                try:
+                    setting_dt = datetime.fromisoformat(setting_val)
+                except ValueError:
+                    pass
+
+            candidates: list[datetime] = []
+            for dt in (db_max, setting_dt):
+                if dt is not None:
+                    ensured = _ensure_utc(dt)
+                    if ensured is not None:
+                        candidates.append(ensured)
+            return max(candidates) if candidates else None
+
+    async def get_latest_billing_timestamp(self) -> Optional[datetime]:
+        """Retrieve most recent billing snapshot timestamp across billing_snapshot and bot_settings.
+
+        Returns:
+            Timezone-aware UTC datetime of latest snapshot, or None if no data exists.
+        """
+        async with self.session_factory() as session:
+            # 1. From BillingSnapshot
+            res = await session.execute(select(func.max(BillingSnapshot.recorded_at)))
+            db_max = res.scalar()
+
+            # 2. From bot_settings key 'last_poll_billing_at'
+            setting_val = await get_bot_setting(session, "last_poll_billing_at")
+            setting_dt: Optional[datetime] = None
+            if setting_val:
+                try:
+                    setting_dt = datetime.fromisoformat(setting_val)
+                except ValueError:
+                    pass
+
+            candidates: list[datetime] = []
+            for dt in (db_max, setting_dt):
+                if dt is not None:
+                    ensured = _ensure_utc(dt)
+                    if ensured is not None:
+                        candidates.append(ensured)
+            return max(candidates) if candidates else None
+
+    async def check_and_sync_on_startup(self) -> Dict[str, Any]:
+        """Evaluate database data freshness on startup and immediately poll if empty or stale.
+
+        If data in database is missing or was updated longer ago than the active interval,
+        triggers an immediate catch-up polling cycle. If data is still fresh, immediate
+        polling is skipped.
+
+        Returns:
+            Dict summarizing evaluation results and actions taken:
+            {
+                "metrics": {"stale_or_empty": bool, "last_updated": datetime | None, "polled": bool},
+                "billing": {"stale_or_empty": bool, "last_updated": datetime | None, "polled": bool},
+            }
+        """
+        now = datetime.now(timezone.utc)
+        metrics_last = await self.get_latest_metrics_timestamp()
+        billing_last = await self.get_latest_billing_timestamp()
+
+        # 1. Evaluate compute metrics freshness
+        metrics_interval_delta = timedelta(minutes=self.current_metrics_interval)
+        metrics_stale = False
+        if metrics_last is None:
+            logger.info("Database has no compute/metrics data. Immediate catch-up poll required.")
+            metrics_stale = True
+        else:
+            elapsed_m = now - metrics_last
+            if elapsed_m >= metrics_interval_delta:
+                logger.info(
+                    "Compute/metrics data is stale (last updated %s ago, interval %dm). Immediate catch-up poll required.",
+                    elapsed_m,
+                    self.current_metrics_interval,
+                )
+                metrics_stale = True
+            else:
+                logger.info(
+                    "Compute/metrics data is fresh (last updated %s ago, interval %dm). Skipping immediate poll.",
+                    elapsed_m,
+                    self.current_metrics_interval,
+                )
+
+        # 2. Evaluate billing freshness
+        billing_interval_delta = timedelta(hours=self.current_billing_interval)
+        billing_stale = False
+        if billing_last is None:
+            logger.info("Database has no billing snapshot data. Immediate catch-up poll required.")
+            billing_stale = True
+        else:
+            elapsed_b = now - billing_last
+            if elapsed_b >= billing_interval_delta:
+                logger.info(
+                    "Billing data is stale (last updated %s ago, interval %dh). Immediate catch-up poll required.",
+                    elapsed_b,
+                    self.current_billing_interval,
+                )
+                billing_stale = True
+            else:
+                logger.info(
+                    "Billing data is fresh (last updated %s ago, interval %dh). Skipping immediate poll.",
+                    elapsed_b,
+                    self.current_billing_interval,
+                )
+
+        # 3. Execute catch-up tasks in parallel if needed
+        tasks = []
+        if metrics_stale:
+            tasks.append(self.trigger_metrics_poll())
+        if billing_stale:
+            tasks.append(self.trigger_billing_poll())
+
+        if tasks:
+            logger.info("Executing startup catch-up sync (%d task(s) in parallel)...", len(tasks))
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info("Startup catch-up sync completed successfully.")
+
+        return {
+            "metrics": {
+                "stale_or_empty": metrics_stale,
+                "last_updated": metrics_last,
+                "polled": metrics_stale,
+            },
+            "billing": {
+                "stale_or_empty": billing_stale,
+                "last_updated": billing_last,
+                "polled": billing_stale,
+            },
+        }
 
     def get_status(self) -> Dict[str, Any]:
         """Return operational status and next run times for all scheduled jobs."""

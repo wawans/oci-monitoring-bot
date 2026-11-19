@@ -150,3 +150,15 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **10.2 Unit Testing & Validasi Batas Waktu Usage API**:
   - [x] Tambahkan assertions pada `tests/test_oci_services.py` untuk memverifikasi bahwa `time_usage_started` dan `time_usage_ended` selalu memiliki `hour == 0`, `minute == 0`, `second == 0`, dan `microsecond == 0`.
   - [x] Tambahkan unit test rollover akhir tahun (Desember ke Januari tahun berikutnya) di `test_payg_billing_december_year_rollover`.
+
+---
+
+## [x] FASE 11: CI/CD GitHub Actions & GHCR Automated Build Pipeline
+- [x] **11.1 Workflow Otomasi Build Multi-Arch ke GHCR**:
+  - [x] Buat workflow `.github/workflows/docker-publish.yml` dengan trigger push ke `main`, tags, dan manual dispatch.
+  - [x] Konfigurasi Job `test` (Quality Gate: pytest 76 tests + mypy) dan Job `build-and-push` (QEMU multi-arch `linux/amd64` dan `linux/arm64`, login GHCR via `GITHUB_TOKEN`, cache GitHub Actions).
+- [x] **11.2 Pembaruan Docker Compose Deployment**:
+  - [x] Tambahkan direktif `image: ghcr.io/wawans/oci-monitoring-bot:latest` pada `docker-compose.yml` untuk memungkinkan pull langsung di server produksi.
+- [x] **11.3 Pembaruan Dokumentasi**:
+  - [x] Perbaiki URL git clone pada `README.md` baris 75 menjadi `https://github.com/wawans/oci-monitoring-bot.git`.
+  - [x] Perbarui panduan deployment via GHCR pull di `README.md` dan `docs/USER_GUIDE.md`.

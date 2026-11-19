@@ -72,7 +72,7 @@ oci-monitoring-bot/
 
 ```bash
 # 1. Kloning repositori
-git clone <url-repo-anda>
+git clone https://github.com/wawans/oci-monitoring-bot.git
 cd oci-monitoring-bot
 
 # 2. Buat dan aktifkan virtual environment
@@ -140,16 +140,23 @@ python -m src.main
 ```
 
 #### Cara 2: Menjalankan via Docker Compose (Rekomendasi Production 24/7)
+
+Image Docker bot ini dibangun secara otomatis ke **GitHub Container Registry (GHCR)** untuk arsitektur x86_64 (`linux/amd64`) dan ARM64 (`linux/arm64` / OCI Ampere A1). Di server VPS produksi, Anda dapat langsung menarik image pra-bangun tanpa perlu build manual:
+
 ```bash
-# Build dan jalankan container di latar belakang
+# 1. Tarik image terbaru dari GHCR
+docker compose pull
+
+# 2. Jalankan container di latar belakang
 docker compose up -d
 
-# Periksa log aplikasi
+# 3. Periksa log aplikasi
 docker compose logs -f oci-bot
 
-# Menghentikan container
+# 4. Menghentikan container
 docker compose down
 ```
+*(Catatan: Untuk membangun image secara mandiri dari source code lokal, jalankan `docker compose up -d --build`)*
 
 ---
 
@@ -159,7 +166,7 @@ Seluruh komponen telah dilengkapi unit test komprehensif:
 ```bash
 source .venv/bin/activate
 
-# Menjalankan 61 unit test
+# Menjalankan 76 unit test
 pytest tests/ -v
 
 # Menjalankan pemeriksaan tipe statis

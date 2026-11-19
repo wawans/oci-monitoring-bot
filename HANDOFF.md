@@ -5,10 +5,11 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 5 Berhasil 100% + Centralized User Guide)**.
-- **Hasil Pengujian**: **61/61 Unit Test PASSED** (1.28s) & Mypy Static Type Checking **0 issues** (30 source files).
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 6 Berhasil 100% + Centralized User Guide)**.
+- **Hasil Pengujian**: **66/66 Unit Test PASSED** (1.26s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Observabilitas**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment, FAQ).
-- **Git State**: Seluruh fase (Fase 1–5) dan dokumentasi `docs/USER_GUIDE.md` telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
+- **Git State**: Seluruh fase (Fase 1–6) telah diselesaikan dengan branch-per-task dan siap di-merge ke `main`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 
 ---
 
@@ -44,6 +45,12 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 - `docker-compose.yml`: Orkestrasi container production dengan persistent volume mounting untuk `data/` dan `credentials/keys/`.
 - `.dockerignore`: Proteksi menyeluruh dari data sensitif, database lokal, dan file cache saat build context.
 - `README.md`: Panduan komprehensif mulai dari setup lokal, setup OCI API keys, deployment Docker Compose, hingga manual bot.
+
+### Fase 6: Observabilitas & Conditional Rotating File Logging
+- `src/logging_config.py`: Pengaturan logging terpadu dengan `setup_logging()`. Mengaktifkan `RotatingFileHandler` ke `logs/oci_bot.log` hanya jika `LOG_LEVEL = DEBUG` (5MB per file, 3 backups) dengan format rinci nama berkas & nomor baris. Zero disk file I/O pada mode `INFO`/`WARNING`/`ERROR`.
+- `config/settings.py` & `.env.example`: Konfigurasi deklaratif untuk `LOG_LEVEL`, `LOG_FILE_PATH`, `LOG_FILE_MAX_BYTES`, dan `LOG_FILE_BACKUP_COUNT`.
+- `Dockerfile` & `docker-compose.yml`: Persiapan direktori `/app/logs` dan volume mount `./logs:/app/logs`.
+- `tests/test_logging.py`: 5 unit test komprehensif untuk pengujian kondisional dan rotasi berkas.
 
 ---
 

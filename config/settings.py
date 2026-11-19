@@ -49,6 +49,21 @@ class Settings(BaseSettings):
         alias="LOG_LEVEL",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
+    log_file_path: Union[Path, str] = Field(
+        default=Path("logs/oci_bot.log"),
+        alias="LOG_FILE_PATH",
+        description="Path to log file (activated only when LOG_LEVEL is DEBUG)",
+    )
+    log_file_max_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        alias="LOG_FILE_MAX_BYTES",
+        description="Maximum size per log file before rotation in bytes",
+    )
+    log_file_backup_count: int = Field(
+        default=3,
+        alias="LOG_FILE_BACKUP_COUNT",
+        description="Number of backup log files to retain",
+    )
 
     # Polling Intervals
     default_metrics_interval_minutes: int = Field(
@@ -62,7 +77,7 @@ class Settings(BaseSettings):
         description="Default interval for billing and forecast polling in hours",
     )
 
-    @field_validator("accounts_config_path", mode="after")
+    @field_validator("accounts_config_path", "log_file_path", mode="after")
     @classmethod
     def parse_path(cls, v: Union[Path, str]) -> Path:
         """Convert string path to pathlib.Path object."""

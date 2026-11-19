@@ -147,8 +147,12 @@ DATABASE_URL="sqlite+aiosqlite:///data/oci_bot.db"
 # Path Konfigurasi Akun
 ACCOUNTS_CONFIG_PATH="config/accounts.yaml"
 
-# Level Logging
+# Level Logging & Rotating File Handler
+# Catatan: RotatingFileHandler ke berkas logs/oci_bot.log HANYA aktif saat LOG_LEVEL="DEBUG"
 LOG_LEVEL="INFO"
+LOG_FILE_PATH="logs/oci_bot.log"
+LOG_FILE_MAX_BYTES=5242880
+LOG_FILE_BACKUP_COUNT=3
 
 # Default Polling Intervals (dapat diubah dinamis via bot)
 DEFAULT_METRICS_INTERVAL_MINUTES=10

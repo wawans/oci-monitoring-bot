@@ -86,3 +86,16 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
   - [x] Lengkapi panduan setup kredensial OCI di `README.md`.
   - [x] Buat Buku Panduan Pengguna terpusat di `docs/USER_GUIDE.md` (Panduan Kredensial OCI, Bot Telegram, Operasional, Deployment, FAQ).
   - [x] Jalankan end-to-end suite test (`pytest tests/ -v`).
+
+---
+
+## [x] FASE 6: Observabilitas & Conditional Rotating File Logging
+- [x] **6.1 Konfigurasi & Modul Logging Terdedikasi**:
+  - [x] Tambahkan opsi konfigurasi log (`LOG_FILE_PATH`, `LOG_FILE_MAX_BYTES`, `LOG_FILE_BACKUP_COUNT`) di `config/settings.py` dan `.env.example`.
+  - [x] Buat `src/logging_config.py` dengan `setup_logging()` dan `RotatingFileHandler` kondisional (hanya aktif jika `LOG_LEVEL = DEBUG`).
+  - [x] Hubungkan `setup_logging` ke `src/main.py`.
+- [x] **6.2 Hardening Docker & Mount Logs**:
+  - [x] Perbarui `Dockerfile` (`mkdir -p /app/logs`) dan `docker-compose.yml` (`./logs:/app/logs`).
+- [x] **6.3 Unit Testing & Dokumentasi**:
+  - [x] Buat unit test suite di `tests/test_logging.py` (5 unit test).
+  - [x] Perbarui `docs/USER_GUIDE.md` dengan panduan logging debug.

@@ -30,6 +30,7 @@ from src.database.connection import (
     init_db,
     sync_accounts_to_db,
 )
+from src.logging_config import setup_logging
 from src.oci_services.billing import BillingService
 from src.oci_services.client_factory import OCIClientFactory
 from src.oci_services.compute import ComputeService
@@ -37,10 +38,6 @@ from src.oci_services.monitoring import MonitoringService
 from src.scheduler.detector import IncidentAlert
 from src.scheduler.manager import SchedulerManager
 
-logging.basicConfig(
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    level=logging.INFO,
-)
 logger = logging.getLogger("oci_bot")
 
 
@@ -75,7 +72,12 @@ def build_telegram_application(
 async def main_async() -> None:
     """Main asynchronous application entry point."""
     settings = get_settings()
-    logger.setLevel(settings.log_level.upper())
+    setup_logging(
+        log_level=settings.log_level,
+        log_file=settings.log_file_path,
+        max_bytes=settings.log_file_max_bytes,
+        backup_count=settings.log_file_backup_count,
+    )
     logger.info("Starting OCI Multi-Account Telegram Monitoring Bot...")
 
     # 1. Initialize SQLite Database (WAL mode)

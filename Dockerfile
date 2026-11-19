@@ -34,8 +34,8 @@ COPY config/ ./config/
 COPY src/ ./src/
 COPY pytest.ini ./
 
-# Prepare data and credentials directories with proper permissions
-RUN mkdir -p /app/data /app/credentials/keys /app/config && \
+# Prepare data, logs, and credentials directories with proper permissions
+RUN mkdir -p /app/data /app/logs /app/credentials/keys /app/config && \
     chown -R appuser:botgroup /app
 
 # Switch to non-root user

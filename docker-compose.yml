@@ -16,6 +16,8 @@ services:
     volumes:
       # Persistent SQLite WAL database storage
       - ./data:/app/data
+      # Rotating debug logs (active when LOG_LEVEL=DEBUG)
+      - ./logs:/app/logs
       # OCI multi-account credentials (read-only for security)
       - ./config/accounts.yaml:/app/config/accounts.yaml:ro
       - ./credentials/keys:/app/credentials/keys:ro

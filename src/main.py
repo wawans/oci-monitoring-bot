@@ -15,6 +15,7 @@ from src.bot.handlers import (
     billing_command,
     callback_router,
     dispatch_incident_push_alert,
+    global_error_handler,
     help_command,
     instances_command,
     settings_command,
@@ -65,6 +66,9 @@ def build_telegram_application(
 
     # Register callback query router
     app.add_handler(CallbackQueryHandler(callback_router))
+
+    # Register global unhandled error handler
+    app.add_error_handler(global_error_handler)
 
     return app
 

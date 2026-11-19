@@ -84,12 +84,17 @@ class BillingService:
             )
 
         start_of_month = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+        if now.month == 12:
+            end_of_month = datetime(now.year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        else:
+            end_of_month = datetime(now.year, now.month + 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
         tenancy_id = bundle.raw_config.get("tenancy", "")
 
         details = RequestSummarizedUsagesDetails(
             tenant_id=tenancy_id,
             time_usage_started=start_of_month,
-            time_usage_ended=now,
+            time_usage_ended=end_of_month,
             granularity="MONTHLY",
             query_type="COST",
         )

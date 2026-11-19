@@ -140,3 +140,13 @@ Checklist granular pekerjaan proyek **OCI Multi-Account Telegram Monitoring Bot*
 - [x] **9.4 Unit Testing & Validasi Batas Callback**:
   - [x] Tambahkan unit test verifikasi batas 64-byte untuk seluruh keyboard dengan real-world long OCID di `tests/test_bot.py`.
   - [x] Tambahkan unit test untuk `get_instance_by_identifier`, `global_error_handler`, dan `callback_router` dengan `short_id` di `tests/test_bot.py`.
+
+---
+
+## [x] FASE 10: Presisi Waktu OCI Usage API & Penyempurnaan Billing Aggregator
+- [x] **10.1 Presisi Tanggal Bersih UTC Midnight**:
+  - [x] Hitung `start_of_month` dan `end_of_month` (tanggal 1 bulan berikutnya pada 00:00:00 UTC) di `src/oci_services/billing.py`.
+  - [x] Mengirimkan `time_usage_ended=end_of_month` pada `RequestSummarizedUsagesDetails` untuk memastikan kedua batas waktu memiliki presisi UTC midnight tanpa fraksi jam/detik, mengeliminasi error HTTP 400 `InvalidParameter: Passed UTC date does not have the right precision`.
+- [x] **10.2 Unit Testing & Validasi Batas Waktu Usage API**:
+  - [x] Tambahkan assertions pada `tests/test_oci_services.py` untuk memverifikasi bahwa `time_usage_started` dan `time_usage_ended` selalu memiliki `hour == 0`, `minute == 0`, `second == 0`, dan `microsecond == 0`.
+  - [x] Tambahkan unit test rollover akhir tahun (Desember ke Januari tahun berikutnya) di `test_payg_billing_december_year_rollover`.

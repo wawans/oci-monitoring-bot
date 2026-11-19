@@ -1,0 +1,6 @@
+# Development and Static Analysis Dependencies
+-r requirements.txt
+
+# Static Type Checking & Stubs
+mypy>=1.10.0
+types-PyYAML>=6.0.0

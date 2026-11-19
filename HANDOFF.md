@@ -5,16 +5,17 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 ---
 
 ## 1. Status Proyek Saat Ini
-- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 11 Berhasil 100% + Centralized User Guide)**.
-- **Hasil Pengujian**: **76/76 Unit Test PASSED** (1.41s) & Mypy Static Type Checking **0 issues** (32 source files).
+- **Status Proyek**: **SELESAI PENUH (Fase 1 s/d Fase 12 Berhasil 100% + Centralized User Guide)**.
+- **Hasil Pengujian**: **76/76 Unit Test PASSED** (1.42s) & Mypy Static Type Checking **0 issues** (32 source files).
 - **Observabilitas (Fase 6)**: `RotatingFileHandler` kondisional (`LOG_LEVEL = DEBUG`) aktif ke `logs/oci_bot.log` (rotasi 5MB, 3 backup), zero file I/O di tingkat INFO.
 - **Perbaikan OCI Telemetry (Fase 7)**: Penambahan parameter wajib `namespace="oci_computeagent"` pada OCI Monitoring client, menyelesaikan HTTP 400 `InvalidParameter: namespace cannot be null`.
 - **Startup Data Freshness (Fase 8)**: Pengecekan otomatis saat start aplikasi (`check_and_sync_on_startup()`). Jika database kosong atau data lebih lama dari interval, dilakukan polling catch-up paralel secara instan via `asyncio.gather`.
 - **Resolusi Batas Callback & Error Handler (Fase 9)**: Pemendekan identifier deterministik SHA-256 12-karakter (`short_id`) pada model database, inline keyboard, dan router callback Telegram, menjamin seluruh `callback_data` $\le 35$ bytes (jauh di bawah batas 64 byte Telegram dan mengeliminasi error `Button_data_invalid`). Registrasi `global_error_handler` terpusat pada `Application` untuk menangkap unhandled exceptions.
 - **Presisi Waktu OCI Usage API (Fase 10)**: Normalisasi presisi waktu `time_usage_started` dan `time_usage_ended` (awal bulan berikutnya tepat pukul 00:00:00 UTC) pada query OCI Usage API `RequestSummarizedUsagesDetails`, menyelesaikan penolakan HTTP 400 `InvalidParameter: Passed UTC date does not have the right precision` dan memastikan tagihan riil akun PAYG teragregasi dengan benar.
 - **CI/CD GitHub Actions & GHCR (Fase 11)**: Workflow otomatis `.github/workflows/docker-publish.yml` untuk pengujian otomatis (pytest + mypy) dan build multi-arch Docker image (`linux/amd64` dan `linux/arm64` OCI Ampere) yang diunggah ke GitHub Container Registry (`ghcr.io/wawans/oci-monitoring-bot:latest`). Deployment di server kini dapat langsung via `docker compose pull && docker compose up -d`.
+- **CI/CD Hardening & Dependencies Resolution (Fase 12)**: Pemisahan dependensi development di `requirements-dev.txt` (`mypy>=1.10.0`, `types-PyYAML>=6.0.0`) untuk menjaga image produksi tetap ramping, serta penyesuaian job `test` di GitHub Actions guna menyelesaikan `mypy: command not found (exit code 127)`.
 - **Dokumentasi Terpusat**: `docs/USER_GUIDE.md` (Buku Panduan Pengguna lengkap: Kredensial OCI, Setup Telegram Bot, Konfigurasi Proyek, Operasional & Kontrol Daya, Deployment via GHCR, FAQ).
-- **Git State**: Seluruh fase (Fase 1–11) telah diselesaikan dengan branch-per-task dan di-merge ke `main` dengan `--no-ff`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
+- **Git State**: Seluruh fase (Fase 1–12) telah diselesaikan dengan branch-per-task dan di-merge ke `main` dengan `--no-ff`. Seluruh task pada `TASK.md` telah berstatus `[x]`.
 
 ---
 
@@ -83,11 +84,15 @@ Catatan estafet untuk AI Agent / developer yang melanjutkan pengerjaan proyek `o
 - `docker-compose.yml`: Penambahan direktif `image: ghcr.io/wawans/oci-monitoring-bot:latest` memungkinkan penarikan image pra-bangun di server produksi via `docker compose pull && docker compose up -d`.
 - `README.md` & `docs/USER_GUIDE.md`: Perbaikan URL repositori `git clone https://github.com/wawans/oci-monitoring-bot.git` dan penambahan panduan deployment via GHCR pull.
 
+### Fase 12: CI/CD Pipeline Hardening & Runner Dependencies Resolution
+- `requirements-dev.txt`: Pemisahan dependensi development & static analysis (`mypy>=1.10.0`, `types-PyYAML>=6.0.0`) agar image Docker produksi tetap bersih dan ringan.
+- `.github/workflows/docker-publish.yml`: Penggunaan `requirements-dev.txt` pada job `test` untuk menyelesaikan error `mypy: command not found (exit code 127)`, serta penambahan variabel `ACTIONS_ALLOW_NODE20_RUNNER: true` untuk meredam deprecation warning Node.js 20.
+
 ---
 
 ## 3. Panduan Pemeliharaan & Pengembangan Selanjutnya
 Jika di masa mendatang ingin menambahkan fitur baru atau perbaikan:
-1. **Prinsip Anti-Bloat**: DILARANG menumpuk pekerjaan baru ke dalam fase yang sudah selesai. Setiap pekerjaan baru WAJIB dibuatkan fase/milestone baru berurutan (misal: Fase 12, dst.) secara modular dan terisolasi di `TASK.md` dan `HANDOFF.md`.
+1. **Prinsip Anti-Bloat**: DILARANG menumpuk pekerjaan baru ke dalam fase yang sudah selesai. Setiap pekerjaan baru WAJIB dibuatkan fase/milestone baru berurutan (misal: Fase 13, dst.) secara modular dan terisolasi di `TASK.md` dan `HANDOFF.md`.
 2. **Git Branching Per-Task**: Buat feature branch baru dari `main` untuk tiap fase/task yang dikerjakan.
 3. **Kepatuhan Guardrails**: Pastikan setiap penambahan kode baru mematuhi seluruh aturan di `AGENTS.md` (type hints lengkap, async first, pathlib.Path, structured logging, 0 print, isolasi error OCI).
 4. **Verifikasi Kualitas**: Jalankan automated test suite `pytest tests/ -v` dan `mypy config/ src/ tests/` (wajib 100% PASSED & 0 error) sebelum melakukan merge `--no-ff` ke `main`.
